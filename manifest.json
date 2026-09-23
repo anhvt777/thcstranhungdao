@@ -1,0 +1,12 @@
+{
+  "name": "Sổ thu học sinh",
+  "short_name": "Sổ thu",
+  "description": "Theo dõi danh sách học sinh và đối soát số liệu thu tại máy đang sử dụng.",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f8f7",
+  "theme_color": "#075e59",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
