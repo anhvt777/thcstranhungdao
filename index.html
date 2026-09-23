@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#075e59">
+  <meta name="description" content="Bảng theo dõi và đối soát số liệu thu học sinh, lưu dữ liệu trên thiết bị đang sử dụng.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; worker-src 'self'; manifest-src 'self'; form-action 'self'">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <title>Sổ thu học sinh</title>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">TH</div>
+        <div><strong>Sổ thu</strong><small>QUẢN LÝ HỌC SINH</small></div>
+      </div>
+      <div class="school-label">TRƯỜNG HỌC</div>
+      <div class="school-name">Bảng điều hành<br><span>thu học sinh</span></div>
+      <nav class="nav" aria-label="Điều hướng chính">
+        <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span>Tổng quan</button>
+        <button class="nav-item" data-page="students"><span class="nav-icon">♧</span>Danh sách học sinh</button>
+        <button class="nav-item" data-page="imports"><span class="nav-icon">⇧</span>Nhập báo cáo thu</button>
+        <button class="nav-item" data-page="history"><span class="nav-icon">◷</span>Lịch sử nhập file</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="local-pill"><span class="status-dot"></span><div><strong>Dữ liệu tại máy này</strong><small>Không tải lên GitHub</small></div></div>
+        <button class="nav-item" data-page="settings"><span class="nav-icon">⚙</span>Sao lưu & cài đặt</button>
+        <div class="sidebar-foot">Bản nền · Chờ file mẫu để cấu hình cột</div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <button class="mobile-menu" id="menuToggle" aria-label="Mở menu">☰</button>
+        <div class="crumb">SỔ THU HỌC SINH <span>/</span> <b id="topTitle">Tổng quan</b></div>
+        <div class="top-actions"><span class="date-chip" id="todayLabel"></span><button class="avatar" title="Thiết bị hiện tại">KT</button></div>
+      </header>
+
+      <section class="page active" id="page-dashboard">
+        <div class="page-heading">
+          <div><div class="eyebrow">BẢNG ĐIỀU HÀNH</div><h1>Tổng quan thu học sinh</h1><p>Theo dõi số phải thu, số đã thu và các lần đối soát ngân hàng.</p></div>
+          <button class="button button-primary" data-go="imports"><span>＋</span> Nhập báo cáo thu</button>
+        </div>
+        <div class="notice notice-info"><span class="notice-icon">i</span><div><strong>Dữ liệu đang được lưu trên trình duyệt của máy này.</strong><br><span>Mỗi máy có bộ dữ liệu riêng. Hãy sao lưu trước khi đổi máy hoặc xóa dữ liệu trình duyệt.</span></div><button class="notice-close" aria-label="Đóng">×</button></div>
+        <div class="stat-grid">
+          <article class="stat-card"><div class="stat-top"><span>TỔNG HỌC SINH</span><span class="stat-icon mint">♧</span></div><div class="stat-value" id="statStudents">0</div><div class="stat-foot" id="statClasses">Chưa có danh sách học sinh</div></article>
+          <article class="stat-card"><div class="stat-top"><span>TỔNG PHẢI THU</span><span class="stat-icon gold">₫</span></div><div class="stat-value" id="statDue">0 <small>₫</small></div><div class="stat-foot">Theo danh sách học sinh đã nhập</div></article>
+          <article class="stat-card"><div class="stat-top"><span>ĐÃ GHI NHẬN THU</span><span class="stat-icon blue">↗</span></div><div class="stat-value" id="statPaid">0 <small>₫</small></div><div class="stat-foot"><span class="positive" id="statMatch">0 giao dịch khớp</span></div></article>
+          <article class="stat-card"><div class="stat-top"><span>CÒN PHẢI THU</span><span class="stat-icon rose">◷</span></div><div class="stat-value" id="statRemain">0 <small>₫</small></div><div class="stat-foot">Chưa gồm khoản miễn/giảm nếu chưa có trong file</div></article>
+        </div>
+        <div class="content-grid">
+          <article class="panel collection-panel">
+            <div class="panel-header"><div><h2>Tiến độ thu</h2><p>Tổng số tiền đã ghi nhận so với tổng phải thu</p></div><span class="period-tag">Tất cả dữ liệu</span></div>
+            <div class="progress-summary"><div><strong id="progressPercent">0%</strong><span>đã thu</span></div><div class="progress-legend"><span><i class="legend-dot collected"></i>Đã ghi nhận <b id="legendPaid">0 ₫</b></span><span><i class="legend-dot pending"></i>Còn phải thu <b id="legendDue">0 ₫</b></span></div></div>
+            <div class="progress-track"><div id="progressFill"></div></div>
+            <div class="chart-empty" id="chartEmpty"><div class="empty-art">▥</div><strong>Chưa có dữ liệu để lập báo cáo</strong><span>Nhập danh sách học sinh và báo cáo ngân hàng để xem tiến độ thu.</span></div>
+          </article>
+          <article class="panel import-panel">
+            <div class="panel-header"><div><h2>Bắt đầu sử dụng</h2><p>Thực hiện theo thứ tự để có báo cáo chính xác</p></div></div>
+            <div class="steps">
+              <div class="step-row"><div class="step-number" id="step1">1</div><div class="step-copy"><strong>Nhập danh sách học sinh</strong><span>Mã học sinh, lớp, khoản phải thu</span></div><button class="step-action" data-go="students">Nhập file <span>→</span></button></div>
+              <div class="step-row"><div class="step-number" id="step2">2</div><div class="step-copy"><strong>Nhập báo cáo ngân hàng</strong><span>Cập nhật số thu mới nhất</span></div><button class="step-action" data-go="imports">Nhập file <span>→</span></button></div>
+              <div class="step-row"><div class="step-number muted">3</div><div class="step-copy"><strong>Xem kết quả đối soát</strong><span>Giao dịch khớp, chưa khớp, trùng lặp</span></div><span class="step-lock">Sau khi nhập file</span></div>
+            </div>
+          </article>
+        </div>
+        <article class="panel table-panel">
+          <div class="panel-header"><div><h2>Tổng hợp theo lớp</h2><p>Số liệu cập nhật sau mỗi lần nhập báo cáo</p></div><button class="text-button" data-go="students">Xem danh sách học sinh →</button></div>
+          <div class="table-wrap"><table><thead><tr><th>LỚP</th><th>SĨ SỐ</th><th>PHẢI THU</th><th>ĐÃ THU</th><th>CÒN LẠI</th><th>TIẾN ĐỘ</th></tr></thead><tbody id="classTable"><tr><td colspan="6" class="empty-cell">Chưa có dữ liệu. Nhập danh sách học sinh để bắt đầu.</td></tr></tbody></table></div>
+        </article>
+        <div class="bottom-grid">
+          <article class="panel"><div class="panel-header"><div><h2>Giao dịch gần đây</h2><p>Các khoản thu từ file ngân hàng mới nhất</p></div><button class="text-button" data-go="imports">Xem báo cáo →</button></div><div id="recentTransactions" class="recent-list empty-inline">Chưa có giao dịch được nhập.</div></article>
+          <article class="panel privacy-card"><div class="privacy-icon">⌑</div><div><h2>Riêng tư theo thiết bị</h2><p>Danh sách học sinh và báo cáo thu được xử lý ngay trong trình duyệt. Web không gửi nội dung file lên GitHub hoặc dịch vụ bên ngoài.</p><button class="text-button" data-go="settings">Quản lý sao lưu →</button></div></article>
+        </div>
+      </section>
+
+      <section class="page" id="page-students">
+        <div class="page-heading"><div><div class="eyebrow">DỮ LIỆU ĐẦU KỲ</div><h1>Danh sách học sinh</h1><p>Nhập file nền để xác định sĩ số và các khoản phải thu.</p></div><button class="button button-primary" id="studentImportButton">⇧ Tải file học sinh</button></div>
+        <div class="notice notice-warn"><span class="notice-icon">!</span><div><strong>Đây là bộ khung nhập file.</strong><br><span>Chưa có file mẫu nên hệ thống cho phép ghép cột cơ bản; cấu hình chính thức sẽ được tinh chỉnh theo mẫu của trường.</span></div></div>
+        <div class="toolbar"><div class="search-box"><span>⌕</span><input id="studentSearch" type="search" placeholder="Tìm theo tên, mã học sinh hoặc lớp..."></div><div class="toolbar-right"><span id="studentCountLabel">0 học sinh</span><button class="button button-outline" id="exportStudents">↓ Xuất danh sách</button></div></div>
+        <div class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>MÃ HỌC SINH</th><th>HỌ VÀ TÊN</th><th>LỚP</th><th>PHẢI THU</th><th>ĐÃ THU</th><th>CÒN LẠI</th></tr></thead><tbody id="studentsTable"><tr><td colspan="6" class="empty-cell">Chưa có học sinh. Hãy tải file danh sách ban đầu.</td></tr></tbody></table></div></div>
+      </section>
+
+      <section class="page" id="page-imports">
+        <div class="page-heading"><div><div class="eyebrow">CẬP NHẬT ĐỊNH KỲ</div><h1>Nhập báo cáo thu</h1><p>Mỗi lần tải báo cáo mới, hệ thống bổ sung giao dịch và cập nhật kết quả đối soát.</p></div></div>
+        <div class="notice notice-info"><span class="notice-icon">i</span><div><strong>Không tải file sao kê chứa thông tin thật lên repository GitHub.</strong><br><span>Hãy chọn file trực tiếp trên máy kế toán. Nội dung file được đọc cục bộ và lưu trong trình duyệt này.</span></div></div>
+        <div class="import-cards">
+          <article class="panel import-card"><div class="import-card-icon student-icon">♧</div><div class="eyebrow">BƯỚC 1</div><h2>Danh sách học sinh</h2><p>File đầu kỳ hoặc file cập nhật danh sách, lớp và khoản phải thu.</p><div class="file-types">Excel .xlsx · CSV .csv</div><button class="button button-outline full-button" id="studentImportButton2">Chọn file danh sách</button><div class="last-import" id="studentLastImport">Chưa nhập file</div></article>
+          <article class="panel import-card featured-import"><div class="import-card-icon bank-icon">₫</div><div class="eyebrow">BƯỚC 2 · NHẬP MỖI LẦN CÓ BÁO CÁO MỚI</div><h2>Báo cáo ngân hàng điện tử</h2><p>Đọc giao dịch thu gần nhất, tự kiểm tra giao dịch trùng và ghép với mã học sinh nếu có.</p><div class="file-types">Excel .xlsx · CSV .csv</div><button class="button button-primary full-button" id="bankImportButton">⇧ Chọn file báo cáo thu</button><div class="last-import" id="bankLastImport">Chưa nhập file</div></article>
+        </div>
+        <div class="mapping-note"><span>ⓘ</span><div><strong>Cần file mẫu để hoàn thiện đối soát.</strong><p>Ngân hàng và trường có thể dùng tên cột khác nhau. Sau khi nhận file mẫu, mình sẽ cố định cột mã học sinh, số tiền, ngày giao dịch, nội dung và quy tắc nhận diện giao dịch trùng.</p></div></div>
+        <article class="panel table-panel"><div class="panel-header"><div><h2>Kết quả đối soát</h2><p>Danh sách giao dịch đã ghi nhận trên máy này</p></div><div class="filter-pills"><span class="filter-pill active">Tất cả <b id="allTxnCount">0</b></span><span class="filter-pill">Khớp <b id="matchedTxnCount">0</b></span><span class="filter-pill">Chưa khớp <b id="unmatchedTxnCount">0</b></span></div></div><div class="table-wrap"><table><thead><tr><th>NGÀY GIAO DỊCH</th><th>MÃ GIAO DỊCH</th><th>NỘI DUNG</th><th>HỌC SINH</th><th>SỐ TIỀN</th><th>TRẠNG THÁI</th></tr></thead><tbody id="transactionsTable"><tr><td colspan="6" class="empty-cell">Chưa có báo cáo ngân hàng.</td></tr></tbody></table></div></article>
+      </section>
+
+      <section class="page" id="page-history">
+        <div class="page-heading"><div><div class="eyebrow">NHẬT KÝ THAO TÁC</div><h1>Lịch sử nhập file</h1><p>Theo dõi thời điểm và kết quả của từng lần cập nhật dữ liệu.</p></div></div>
+        <article class="panel table-panel"><div class="table-wrap"><table><thead><tr><th>THỜI GIAN</th><th>LOẠI FILE</th><th>TÊN FILE</th><th>SỐ DÒNG</th><th>KẾT QUẢ</th></tr></thead><tbody id="historyTable"><tr><td colspan="5" class="empty-cell">Chưa có lịch sử nhập file.</td></tr></tbody></table></div></article>
+      </section>
+
+      <section class="page" id="page-settings">
+        <div class="page-heading"><div><div class="eyebrow">AN TOÀN DỮ LIỆU</div><h1>Sao lưu & cài đặt</h1><p>Quản lý bản sao lưu của dữ liệu đang lưu trên thiết bị này.</p></div></div>
+        <div class="settings-grid">
+          <article class="panel setting-card"><div class="setting-icon">⤓</div><h2>Sao lưu dữ liệu</h2><p>Tải xuống một tệp sao lưu mã hóa bằng mật khẩu. Tệp sao lưu chứa danh sách học sinh, giao dịch và nhật ký trên máy này.</p><button class="button button-primary" id="backupButton">Tạo bản sao lưu</button></article>
+          <article class="panel setting-card"><div class="setting-icon">⤒</div><h2>Khôi phục dữ liệu</h2><p>Chọn tệp sao lưu đã tạo để chuyển dữ liệu sang máy khác. Cần đúng mật khẩu khi tạo bản sao lưu.</p><button class="button button-outline" id="restoreButton">Chọn tệp sao lưu</button></article>
+          <article class="panel setting-card danger-card"><div class="setting-icon">⌫</div><h2>Xóa dữ liệu trên máy này</h2><p>Xóa học sinh, giao dịch và lịch sử đã lưu trong trình duyệt hiện tại. Thao tác này không thể hoàn tác nếu chưa có bản sao lưu.</p><button class="button button-danger" id="clearDataButton">Xóa toàn bộ dữ liệu</button></article>
+        </div>
+        <div class="privacy-explainer"><span>🔒</span><div><strong>Dữ liệu không được đồng bộ tự động giữa các máy.</strong><p>Máy của kế toán và máy của hiệu trưởng có kho dữ liệu riêng. Muốn chia sẻ số liệu, hãy tạo bản sao lưu có mật khẩu rồi chuyển tệp theo quy trình nội bộ của trường. Bản nền chưa có tài khoản và phân quyền người dùng.</p></div></div>
+      </section>
+      <footer class="app-footer"><span>© Sổ thu học sinh</span><span>Chạy cục bộ trên trình duyệt · <span id="storageStatus">Đang kiểm tra kho dữ liệu…</span></span></footer>
+    </main>
+  </div>
+
+  <input type="file" id="studentFileInput" accept=".xlsx,.csv,.tsv,.txt" hidden>
+  <input type="file" id="bankFileInput" accept=".xlsx,.csv,.tsv,.txt" hidden>
+  <input type="file" id="restoreFileInput" accept=".sctbackup" hidden>
+  <div class="toast" id="toast" role="status"></div>
+  <div class="modal-backdrop" id="modalBackdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-header"><div><div class="eyebrow" id="modalEyebrow">NHẬP FILE</div><h2 id="modalTitle">Ghép cột dữ liệu</h2></div><button class="icon-button" id="modalClose" aria-label="Đóng">×</button></div><div id="modalBody"></div><div class="modal-actions"><button class="button button-outline" id="modalCancel">Hủy</button><button class="button button-primary" id="modalConfirm">Xác nhận nhập</button></div></section></div>
+  <script src="app.js"></script>
+</body>
+</html>
