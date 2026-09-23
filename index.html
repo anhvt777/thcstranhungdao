@@ -22,11 +22,12 @@
         <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span>Tổng quan</button>
         <button class="nav-item" data-page="students"><span class="nav-icon">♧</span>Học sinh</button>
         <button class="nav-item" data-page="fees"><span class="nav-icon">▤</span>Khoản thu</button>
+        <button class="nav-item" data-page="qr"><span class="nav-icon">▦</span>Tạo mã QR</button>
         <button class="nav-item" data-page="imports"><span class="nav-icon">⇧</span>Nhập dữ liệu</button>
         <button class="nav-item" data-page="history"><span class="nav-icon">▣</span>Tra cứu & báo cáo</button>
       </nav>
       <div class="sidebar-bottom">
-        <div class="school-chip"><span class="school-symbol">⌂</span><div><strong>Trường THCS Trần Hưng Đạo</strong><small>Năm học 2026–2027</small></div></div>
+        <div class="school-chip"><span class="school-symbol">⌂</span><div><strong>Trường học mẫu</strong><small>Năm học 2026–2027</small></div></div>
         <button class="nav-item" data-page="settings"><span class="nav-icon">⚙</span>Sao lưu & cài đặt</button>
       </div>
     </aside>
@@ -84,6 +85,34 @@
         <article class="panel table-panel"><div class="panel-header"><div><h2>Giao dịch theo khoản thu</h2><p>Danh sách chi tiết được nhập trên thiết bị này</p></div><div class="filter-pills"><span class="filter-pill">Tất cả <b id="allTxnCount">0</b></span><span class="filter-pill">Khớp <b id="matchedTxnCount">0</b></span><span class="filter-pill">Chưa khớp <b id="unmatchedTxnCount">0</b></span></div></div><div class="table-wrap"><table><thead><tr><th>NGÀY</th><th>MÃ GIAO DỊCH</th><th>KHOẢN THU</th><th>NỘI DUNG</th><th>MÃ HS / HỌC SINH</th><th>SỐ TIỀN</th><th>TRẠNG THÁI</th></tr></thead><tbody id="transactionsTable"><tr><td colspan="7" class="empty-cell">Chưa có báo cáo ngân hàng.</td></tr></tbody></table></div></article>
       </section>
 
+      <section class="page" id="page-qr">
+        <div class="page-heading"><div><span class="eyebrow">THANH TOÁN THEO TỪNG MÓN</span><h1>Tạo mã QR</h1><p>Tạo QR cho từng khoản còn phải thu của học sinh, tiền chuyển trực tiếp vào tài khoản trường.</p></div></div>
+        <div class="qr-local-note"><span class="note-icon">✓</span><div><strong>Tạo và lưu ảnh ngay trên thiết bị này.</strong><p>Dữ liệu học sinh, số tiền và nội dung chuyển khoản không gửi tới dịch vụ tạo ảnh QR bên ngoài.</p></div></div>
+        <div class="qr-layout">
+          <article class="panel qr-config-card">
+            <div class="panel-header"><div><h2>Tài khoản nhận tiền của trường</h2><p>Thông tin được lưu riêng trong trình duyệt của máy này.</p></div><span class="category-badge">Lưu cục bộ</span></div>
+            <div class="qr-config-grid">
+              <label class="qr-field"><span>Mã BIN ngân hàng</span><input id="qrBankBin" inputmode="numeric" maxlength="6" placeholder="Ví dụ: 970418"></label>
+              <label class="qr-field"><span>Số tài khoản nhận</span><input id="qrAccountNumber" autocomplete="off" placeholder="Số tài khoản trường"></label>
+              <label class="qr-field qr-field-wide"><span>Tên chủ tài khoản</span><input id="qrAccountName" autocomplete="organization" maxlength="25" placeholder="Tên chủ tài khoản, tối đa 25 ký tự"></label>
+            </div>
+            <div class="qr-config-actions"><span id="qrConfigStatus">Chưa thiết lập tài khoản nhận</span><button class="button button-outline" id="saveQrConfig">Lưu tài khoản</button></div>
+            <p class="table-note">Hãy kiểm tra mã BIN, số tài khoản và tên người nhận với ngân hàng trước khi gửi QR cho phụ huynh.</p>
+          </article>
+          <article class="panel qr-create-card">
+            <div class="panel-header"><div><h2>Chọn món cần tạo QR</h2><p>Mỗi QR gắn với một học sinh và một khoản thu.</p></div><span class="mini-tag" id="qrDueCount">0 món còn phải thu</span></div>
+            <div class="qr-filter-grid">
+              <label class="qr-field"><span>Khoản thu</span><select id="qrFeeFilter"><option value="all">Tất cả khoản thu</option><option value="insurance">Bảo hiểm</option><option value="service">Dịch vụ</option></select></label>
+              <label class="qr-field"><span>Lớp</span><select id="qrClassFilter"><option value="all">Tất cả lớp</option></select></label>
+              <label class="qr-field"><span>Danh sách</span><select id="qrStatusFilter"><option value="unpaid">Chỉ món chưa ghi nhận đã thu</option><option value="all">Tất cả món phải thu</option></select></label>
+            </div>
+            <div class="qr-create-actions"><span id="qrSelectionCount">Chưa có QR được tạo</span><button class="button button-primary" id="generateQrs">Tạo QR</button><button class="button button-outline" id="downloadQrs" hidden>↓ Tải ZIP</button></div>
+          </article>
+        </div>
+        <div class="qr-preview-header"><div><h2>Ảnh QR theo học sinh</h2><p id="qrPreviewSummary">Chọn điều kiện rồi bấm “Tạo QR”.</p></div></div>
+        <div class="qr-preview-grid" id="qrPreviewGrid"><div class="panel qr-empty-state">Nhập danh sách học sinh có chi tiết từng khoản phải thu để bắt đầu.</div></div>
+      </section>
+
       <section class="page" id="page-imports">
         <div class="page-heading"><div><span class="eyebrow">CẬP NHẬT DỮ LIỆU</span><h1>Nhập dữ liệu</h1><p>Nhập danh sách học sinh trước, sau đó bổ sung báo cáo thu mới nhất.</p></div></div>
         <div class="import-cards">
@@ -118,6 +147,8 @@
   <input type="file" id="restoreFileInput" accept=".sctbackup" hidden>
   <div class="toast" id="toast" role="status"></div>
   <div class="modal-backdrop" id="modalBackdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-header"><div><div class="eyebrow" id="modalEyebrow">NHẬP FILE</div><h2 id="modalTitle">Ghép cột dữ liệu</h2></div><button class="icon-button" id="modalClose" aria-label="Đóng">×</button></div><div id="modalBody"></div><div class="modal-actions"><button class="button button-outline" id="modalCancel">Hủy</button><button class="button button-primary" id="modalConfirm">Xác nhận nhập</button></div></section></div>
+  <script src="vendor/qrcode.min.js"></script>
+  <script src="vendor/jszip.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
