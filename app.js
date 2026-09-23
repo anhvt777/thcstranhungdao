@@ -330,7 +330,7 @@ function reconcileTransactions(students, transactions) {
     const item=possible[0], key=`${student.code}|${item.id}`;
     if(claimed.has(key))return {...t,studentCode:student.code,studentName:student.name,matched:false,paymentStatus:'duplicate'};
     claimed.add(key);
-    return {...t,studentCode:student.code,studentName:student.name,matched:true,paymentStatus:'valid',matchedDueItem:item.name};
+    return {...t,studentCode:student.code,studentName:student.name,matched:true,paymentStatus:'valid',matchedDueItem:item.name,matchedDueItemId:item.id};
   });
 }
 function feeSummaries(students, transactions) {
@@ -341,10 +341,10 @@ function feeSummaries(students, transactions) {
     summaries[key].paid += amount;
     if (!paidByStudent.has(t.studentCode)) paidByStudent.set(t.studentCode, {});
     const map = paidByStudent.get(t.studentCode); map[key] = (map[key] || 0) + amount;
-    paidDueItems.add(`${t.studentCode}|${slug(t.matchedDueItem||'')}`);
+    paidDueItems.add(`${t.studentCode}|${t.matchedDueItemId||slug(t.matchedDueItem||'')}`);
   });
   students.forEach(student => {
-    studentDueItems(student).forEach(item=>{const s=summaries[item.category]||summaries.other;s.due+=item.amount;s.dueItems++;if(paidDueItems.has(`${student.code}|${slug(item.name)}`))s.paidItems++;});
+    studentDueItems(student).forEach(item=>{const s=summaries[item.category]||summaries.other;s.due+=item.amount;s.dueItems++;if(paidDueItems.has(`${student.code}|${item.id||slug(item.name)}`))s.paidItems++;});
   });
   Object.values(summaries).forEach(s => { s.remain = Math.max(0, s.due - s.paid); s.pct = s.due ? Math.min(100, Math.round(s.paid / s.due * 100)) : 0; });
   return { summaries, paidByStudent };
