@@ -18,6 +18,8 @@
 - Dịch vụ khác có thể xem chi tiết theo nội dung chuyển khoản như gửi xe, nước uống. Mã học sinh không tìm thấy sẽ hiện là chưa khớp.
 - Một giao dịch chỉ được tính đã thu khi mã học sinh, loại khoản và số tiền khớp chính xác với một món phải thu chưa được ghép. Giao dịch sai số tiền, sai khoản, trùng món hoặc không xác định được duy nhất sẽ không cộng vào số đã thu.
 - Báo cáo ngân hàng nên có cột “Khoản thu” và mã học sinh. Nếu thiếu loại khoản, trang thử nhận diện từ nội dung giao dịch.
+- Tạo mã QR: lưu một lần mã BIN, số tài khoản và tên chủ tài khoản của trường; sau đó tạo ảnh QR riêng cho từng món phải thu, lọc theo lớp và tải ZIP. Nội dung thanh toán được tạo thành ảnh QR và đóng gói ngay trong trình duyệt bằng thư viện cục bộ.
+- QR mặc định chỉ tạo cho món chưa có giao dịch khớp chính xác. Sau khi cập nhật báo cáo thu, danh sách QR được tính lại. Hãy quét thử bằng ứng dụng ngân hàng trước khi gửi cho phụ huynh.
 
 ## Triển khai
 
