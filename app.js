@@ -222,6 +222,26 @@ function serviceDetail(raw, content) {
   detail = detail.replace(/\s*[-–—]\s*(ma\s*)?hs\s*[a-z0-9-]+.*$/i, '').replace(/\s*[-–—]\s*hs\d+.*$/i, '').trim();
   return detail ? detail.charAt(0).toLocaleUpperCase('vi-VN') + detail.slice(1) : 'Dịch vụ khác';
 }
+function studentFeesFromRow(row, map) {
+  const hasServiceDetails=map.dueParking>=0||map.dueWater>=0;
+  const fields=[['insurance','Bảo hiểm','dueInsurance']];
+  if(hasServiceDetails){fields.push(['service','Gửi xe','dueParking'],['service','Nước uống','dueWater']);}
+  else fields.push(['service','Dịch vụ khác','dueService']);
+  const dueItems=fields.filter(([, ,field])=>map[field]>=0).map(([category,name,field])=>({id:`${category}:${slug(name)}`,category,name,amount:parseAmount(cell(row,map,field))})).filter(item=>item.amount>0);
+  const hasBreakdown=fields.some(([, ,field])=>map[field]>=0);
+  if(hasServiceDetails&&map.dueService>=0){
+    const serviceTotal=parseAmount(cell(row,map,'dueService'));
+    const detailedService=dueItems.filter(item=>item.category==='service').reduce((sum,item)=>sum+item.amount,0);
+    if(serviceTotal>detailedService)dueItems.push({id:'service:other',category:'service',name:'Dịch vụ khác',amount:serviceTotal-detailedService});
+  }
+  const statedDue=parseAmount(cell(row,map,'due'));
+  const detailedTotal=dueItems.reduce((sum,item)=>sum+item.amount,0);
+  if(hasBreakdown&&statedDue>detailedTotal)dueItems.push({id:'other:unclassified',category:'other',name:'Chưa phân loại',amount:statedDue-detailedTotal});
+  if(!hasBreakdown&&statedDue>0)dueItems.push({id:'other:unclassified',category:'other',name:'Chưa phân loại',amount:statedDue});
+  const due=hasBreakdown?Math.max(statedDue,detailedTotal):statedDue;
+  const dueByCategory=dueItems.reduce((out,item)=>(out[item.category]=(out[item.category]||0)+item.amount,out),{});
+  return {due,dueItems,dueByCategory,hasFeeBreakdown:hasBreakdown};
+}
 async function confirmImport() {
   if (!activeImport) return;
   const { kind, file, rows } = activeImport; const map = getMap();
@@ -231,16 +251,7 @@ async function confirmImport() {
   const now = new Date().toISOString(); let summary;
   if (kind === 'students') {
     const items = dataRows.map(row => {
-      const dueFields = [['insurance','Bảo hiểm','dueInsurance'],['service','Dịch vụ khác','dueService'],['service','Gửi xe','dueParking'],['service','Nước uống','dueWater']];
-      const dueItems = dueFields.filter(([, , field]) => map[field] >= 0).map(([category,name,field]) => ({ id:`${category}:${slug(name)}`, category, name, amount:parseAmount(cell(row,map,field)) })).filter(item => item.amount > 0);
-      const hasBreakdown = dueFields.some(([, , field]) => map[field] >= 0);
-      const statedDue = parseAmount(cell(row,map,'due'));
-      const detailedTotal = dueItems.reduce((sum,item)=>sum+item.amount,0);
-      if (hasBreakdown && statedDue > detailedTotal) dueItems.push({ id:'other:unclassified', category:'other', name:'Chưa phân loại', amount:statedDue-detailedTotal });
-      if (!hasBreakdown && statedDue > 0) dueItems.push({ id:'other:unclassified', category:'other', name:'Chưa phân loại', amount:statedDue });
-      const due = hasBreakdown ? Math.max(statedDue,detailedTotal) : statedDue;
-      const dueByCategory = dueItems.reduce((out,item)=>(out[item.category]=(out[item.category]||0)+item.amount,out),{});
-      return { code:cell(row,map,'code'), name:cell(row,map,'name'), className:cell(row,map,'className'), due, dueItems, dueByCategory, hasFeeBreakdown:hasBreakdown, updatedAt:now };
+      return { code:cell(row,map,'code'), name:cell(row,map,'name'), className:cell(row,map,'className'), ...studentFeesFromRow(row,map), updatedAt:now };
     }).filter(s => s.code && s.name);
     await putMany('students', items);
     const codes = new Map((await all('students')).map(s => [slug(s.code), s]));
