@@ -421,7 +421,8 @@ function renderFeeDetails(students, transactions, summaries) {
 async function refresh() {
   const [students,storedTransactions,history]=await Promise.all([all('students'),all('transactions'),all('history')]);
   const transactions=reconcileTransactions(students,storedTransactions);
-  if(transactions.some((t,i)=>t.paymentStatus!==storedTransactions[i]?.paymentStatus||t.matched!==storedTransactions[i]?.matched||t.studentCode!==storedTransactions[i]?.studentCode)) await putMany('transactions',transactions);
+  const priorById=new Map(storedTransactions.map(t=>[t.id,t]));
+  if(transactions.some(t=>{const old=priorById.get(t.id);return !old||['paymentStatus','matched','studentCode','studentName','matchedDueItem','matchedDueItemId'].some(key=>t[key]!==old[key]);})) await putMany('transactions',transactions);
   const t=totals(students,transactions);const classes=new Set(students.map(s=>s.className).filter(Boolean));
   $('#statStudents').textContent=students.length.toLocaleString('vi-VN');$('#statClasses').textContent=students.length?`${classes.size} lớp`:'Chưa có danh sách';
   $('#statFeeItems').textContent=t.dueItems.toLocaleString('vi-VN');$('#statDueAmount').textContent=`${money(t.due)} phải thu`;
