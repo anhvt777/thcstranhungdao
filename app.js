@@ -153,6 +153,8 @@ function guessColumn(headers, field) {
     due: ['so tien phai thu', 'phai thu', 'hoc phi', 'muc thu', 'tien thu'],
     dueInsurance: ['bao hiem phai thu', 'so tien bao hiem', 'bao hiem', 'insurance'],
     dueService: ['dich vu khac phai thu', 'so tien dich vu khac', 'dich vu khac', 'service due'],
+    dueParking: ['gui xe phai thu', 'so tien gui xe', 'phi gui xe', 'gui xe'],
+    dueWater: ['nuoc uong phai thu', 'so tien nuoc uong', 'phi nuoc uong', 'nuoc uong'],
     amount: ['so tien giao dich', 'amount', 'credit', 'ghi co', 'so tien'],
     txnId: ['ma giao dich', 'transaction id', 'ma tham chieu', 'reference', 'trace', 'so but toan'],
     date: ['ngay giao dich', 'thoi gian', 'transaction date', 'ngay hach toan', 'ngay'],
@@ -179,7 +181,7 @@ function openImportModal(kind, file, rows) {
   $('#modalTitle').textContent = kind === 'students' ? 'Ghép cột danh sách học sinh' : 'Ghép cột báo cáo thu';
   const summary = `<div class="file-summary"><span class="file-badge">${file.name.toLowerCase().endsWith('.xlsx') ? 'XLSX' : 'CSV'}</span><div><strong>${escapeHTML(file.name)}</strong><small>${rows.length - 1} dòng dữ liệu · ${headers.length} cột</small></div></div>`;
   const fields = kind === 'students'
-    ? `<div class="mapping-grid">${fieldSelect('map-code','Mã học sinh',headers,'code',true)}${fieldSelect('map-name','Họ và tên',headers,'name',true)}${fieldSelect('map-class','Lớp',headers,'className')}${fieldSelect('map-due','Tổng phải thu (nếu có)',headers,'due')}${fieldSelect('map-insurance','Phải thu · Bảo hiểm',headers,'dueInsurance')}${fieldSelect('map-service','Phải thu · Dịch vụ khác',headers,'dueService')}</div><p class="mapping-intro">Có thể nhập tổng phải thu hoặc tách riêng số phải thu của từng khoản.</p>`
+    ? `<div class="mapping-grid">${fieldSelect('map-code','Mã học sinh',headers,'code',true)}${fieldSelect('map-name','Họ và tên',headers,'name',true)}${fieldSelect('map-class','Lớp',headers,'className')}${fieldSelect('map-due','Tổng phải thu (nếu có)',headers,'due')}${fieldSelect('map-insurance','Phải thu · Bảo hiểm',headers,'dueInsurance')}${fieldSelect('map-service','Phải thu · Dịch vụ khác',headers,'dueService')}${fieldSelect('map-parking','Phải thu · Gửi xe',headers,'dueParking')}${fieldSelect('map-water','Phải thu · Nước uống',headers,'dueWater')}</div><p class="mapping-intro">Nên có số phải thu riêng cho Bảo hiểm và từng dịch vụ. Hệ thống chỉ xác nhận món thu khi mã học sinh, khoản thu và số tiền khớp chính xác.</p>`
     : `<div class="mapping-grid">${fieldSelect('map-amount','Số tiền giao dịch',headers,'amount',true)}${fieldSelect('map-student','Mã học sinh trong giao dịch',headers,'studentCode')}${fieldSelect('map-txn','Mã giao dịch/tham chiếu',headers,'txnId')}${fieldSelect('map-date','Ngày giao dịch',headers,'date')}${fieldSelect('map-content','Nội dung chuyển khoản',headers,'content')}${fieldSelect('map-category','Khoản thu',headers,'feeCategory')}</div><p class="mapping-intro">Chọn cột “Khoản thu” để phân biệt Bảo hiểm và Dịch vụ khác. Nếu thiếu cột này, hệ thống thử nhận diện trong nội dung.</p>`;
   $('#modalBody').innerHTML = `${summary}${fields}${previewHtml(headers, rows)}`;
   $('#modalConfirm').textContent = kind === 'students' ? 'Nhập danh sách' : 'Nhập & đối soát';
@@ -229,20 +231,23 @@ async function confirmImport() {
   const now = new Date().toISOString(); let summary;
   if (kind === 'students') {
     const items = dataRows.map(row => {
-      const insuranceText = cell(row, map, 'dueInsurance'); const serviceText = cell(row, map, 'dueService');
-      const hasBreakdown = (map.dueInsurance >= 0 && insuranceText !== '') || (map.dueService >= 0 && serviceText !== '');
-      const dueByCategory = {};
-      if (map.dueInsurance >= 0) dueByCategory.insurance = parseAmount(insuranceText);
-      if (map.dueService >= 0) dueByCategory.service = parseAmount(serviceText);
-      const due = hasBreakdown ? (dueByCategory.insurance || 0) + (dueByCategory.service || 0) : parseAmount(cell(row, map, 'due'));
-      return { code:cell(row,map,'code'), name:cell(row,map,'name'), className:cell(row,map,'className'), due, ...(hasBreakdown ? { dueByCategory } : {}), updatedAt:now };
+      const dueFields = [['insurance','Bảo hiểm','dueInsurance'],['service','Dịch vụ khác','dueService'],['service','Gửi xe','dueParking'],['service','Nước uống','dueWater']];
+      const dueItems = dueFields.filter(([, , field]) => map[field] >= 0).map(([category,name,field]) => ({ id:`${category}:${slug(name)}`, category, name, amount:parseAmount(cell(row,map,field)) })).filter(item => item.amount > 0);
+      const hasBreakdown = dueFields.some(([, , field]) => map[field] >= 0);
+      const statedDue = parseAmount(cell(row,map,'due'));
+      const detailedTotal = dueItems.reduce((sum,item)=>sum+item.amount,0);
+      if (hasBreakdown && statedDue > detailedTotal) dueItems.push({ id:'other:unclassified', category:'other', name:'Chưa phân loại', amount:statedDue-detailedTotal });
+      if (!hasBreakdown && statedDue > 0) dueItems.push({ id:'other:unclassified', category:'other', name:'Chưa phân loại', amount:statedDue });
+      const due = hasBreakdown ? Math.max(statedDue,detailedTotal) : statedDue;
+      const dueByCategory = dueItems.reduce((out,item)=>(out[item.category]=(out[item.category]||0)+item.amount,out),{});
+      return { code:cell(row,map,'code'), name:cell(row,map,'name'), className:cell(row,map,'className'), due, dueItems, dueByCategory, hasFeeBreakdown:hasBreakdown, updatedAt:now };
     }).filter(s => s.code && s.name);
     await putMany('students', items);
     const codes = new Map((await all('students')).map(s => [slug(s.code), s]));
     const knownTransactions = await all('transactions');
     const rematched = knownTransactions.map(t => {
       const student = t.reportedStudentCode ? codes.get(slug(t.reportedStudentCode)) : null;
-      return student ? { ...t, studentCode:student.code, studentName:student.name, matched:true } : t;
+      return student ? { ...t, studentCode:student.code, studentName:student.name, matched:true } : { ...t, studentCode:'', studentName:'', matched:false };
     });
     await putMany('transactions', rematched);
     summary = { rows:dataRows.length, imported:items.length, detail:`${items.length} học sinh được thêm/cập nhật` };
@@ -293,28 +298,53 @@ function setPage(page) {
   $('#sidebar').classList.remove('open'); window.scrollTo({ top:0, behavior:'smooth' });
 }
 function transactionCategory(t) { return ['insurance','service','other'].includes(t.feeCategory) ? t.feeCategory : getFeeKey('', t.content); }
+function studentDueItems(student) {
+  if (Array.isArray(student.dueItems)) return student.dueItems.filter(x=>num(x.amount)>0).map(x=>({...x,amount:num(x.amount)}));
+  if (student.dueByCategory && Object.keys(student.dueByCategory).length) {
+    const items=[];
+    for (const key of ['insurance','service','other']) { const amount=num(student.dueByCategory[key]); if(amount) items.push({id:`legacy:${key}`,category:key,name:key==='other'?'Chưa phân loại':getFeeLabel(key),amount,legacy:true}); }
+    const gap=Math.max(0,num(student.due)-items.reduce((sum,x)=>sum+x.amount,0));
+    if(gap)items.push({id:'legacy:unclassified',category:'other',name:'Chưa phân loại',amount:gap});
+    return items;
+  }
+  return num(student.due)>0?[{id:'legacy:unclassified',category:'other',name:'Chưa phân loại',amount:num(student.due)}]:[];
+}
 function studentDueByCategory(student) {
-  if (student.dueByCategory && typeof student.dueByCategory === 'object' && Object.keys(student.dueByCategory).length) return {
-    insurance:num(student.dueByCategory.insurance), service:num(student.dueByCategory.service), other:num(student.dueByCategory.other)
-  };
-  return { insurance:0, service:0, other:num(student.due) };
+  return studentDueItems(student).reduce((out,item)=>(out[item.category]=(out[item.category]||0)+item.amount,out),{insurance:0,service:0,other:0});
+}
+function reconcileTransactions(students, transactions) {
+  const byCode=new Map(students.map(s=>[slug(s.code),s])); const claimed=new Set();
+  return [...transactions].sort((a,b)=>(a.date||a.importedAt||'').localeCompare(b.date||b.importedAt||'')).map(t=>{
+    const student=byCode.get(slug(t.reportedStudentCode||t.studentCode||''));
+    if(!student)return {...t,studentCode:'',studentName:'',matched:false,paymentStatus:t.reportedStudentCode?'unmatched':'missing_code'};
+    const studentItems=studentDueItems(student), category=transactionCategory(t), amount=num(t.amount), candidates=category==='other'?[]:studentItems.filter(item=>!item.legacy&&item.category===category&&item.amount===amount);
+    if(!candidates.length) {
+      const categoryItems=studentItems.filter(item=>item.category===category);
+      const status=categoryItems.some(item=>item.legacy)?'missing_category':categoryItems.length?'amount_mismatch':studentItems.length?'missing_category':'no_due';
+      return {...t,studentCode:student.code,studentName:student.name,matched:false,paymentStatus:status};
+    }
+    const reportedDetail=slug(t.feeDetail||'');
+    const byName=reportedDetail?candidates.filter(item=>slug(item.name)===reportedDetail):[];
+    const possible=byName.length?byName:candidates;
+    if(possible.length!==1)return {...t,studentCode:student.code,studentName:student.name,matched:false,paymentStatus:'ambiguous'};
+    const item=possible[0], key=`${student.code}|${item.id}`;
+    if(claimed.has(key))return {...t,studentCode:student.code,studentName:student.name,matched:false,paymentStatus:'duplicate'};
+    claimed.add(key);
+    return {...t,studentCode:student.code,studentName:student.name,matched:true,paymentStatus:'valid',matchedDueItem:item.name};
+  });
 }
 function feeSummaries(students, transactions) {
   const summaries = Object.fromEntries(FEES.map(f => [f.key, { ...f, due:0, paid:0, remain:0, dueItems:0, paidItems:0, pct:0 }]));
-  const paidByStudent = new Map();
-  transactions.filter(t => t.matched && t.studentCode).forEach(t => {
+  const paidByStudent = new Map(), paidDueItems=new Set();
+  transactions.filter(t => t.paymentStatus==='valid' && t.studentCode).forEach(t => {
     const key = transactionCategory(t); const amount = num(t.amount);
     summaries[key].paid += amount;
     if (!paidByStudent.has(t.studentCode)) paidByStudent.set(t.studentCode, {});
     const map = paidByStudent.get(t.studentCode); map[key] = (map[key] || 0) + amount;
+    paidDueItems.add(`${t.studentCode}|${slug(t.matchedDueItem||'')}`);
   });
   students.forEach(student => {
-    const dueMap = studentDueByCategory(student); const paidMap = paidByStudent.get(student.code) || {};
-    FEES.forEach(fee => {
-      const due = dueMap[fee.key] || 0; if (due <= 0) return;
-      const s = summaries[fee.key]; s.due += due; s.dueItems++;
-      if ((paidMap[fee.key] || 0) >= due) s.paidItems++;
-    });
+    studentDueItems(student).forEach(item=>{const s=summaries[item.category]||summaries.other;s.due+=item.amount;s.dueItems++;if(paidDueItems.has(`${student.code}|${slug(item.name)}`))s.paidItems++;});
   });
   Object.values(summaries).forEach(s => { s.remain = Math.max(0, s.due - s.paid); s.pct = s.due ? Math.min(100, Math.round(s.paid / s.due * 100)) : 0; });
   return { summaries, paidByStudent };
@@ -322,7 +352,7 @@ function feeSummaries(students, transactions) {
 function totals(students, transactions) {
   const { summaries, paidByStudent } = feeSummaries(students, transactions);
   const due = Object.values(summaries).reduce((sum,s)=>sum+s.due,0);
-  const paid = transactions.filter(t=>t.matched).reduce((sum,t)=>sum+num(t.amount),0);
+  const paid = transactions.filter(t=>t.paymentStatus==='valid').reduce((sum,t)=>sum+num(t.amount),0);
   const remain = Math.max(0,due-paid);
   const dueItems = Object.values(summaries).reduce((sum,s)=>sum+s.dueItems,0);
   const paidItems = Object.values(summaries).reduce((sum,s)=>sum+s.paidItems,0);
@@ -334,10 +364,11 @@ function renderStudents(students, transactions) {
   $('#studentCountLabel').textContent = `${students.length.toLocaleString('vi-VN')} học sinh`;
   $('#studentsTable').innerHTML = filtered.length ? filtered.slice(0,500).map(s => {
     const due = studentDueByCategory(s); const paid = paidByStudent.get(s.code) || {};
-    const insPaid = num(paid.insurance), svcPaid = num(paid.service);
-    const totalRemain = Math.max(0,(s.due || Object.values(due).reduce((a,b)=>a+b,0))-(insPaid+svcPaid+num(paid.other)));
-    return `<tr><td><strong>${escapeHTML(s.code)}</strong></td><td>${escapeHTML(s.name)}</td><td>${escapeHTML(s.className || '—')}</td><td>${money(due.insurance)}</td><td>${money(insPaid)}</td><td class="remain-cell">${money(Math.max(0,due.insurance-insPaid))}</td><td>${money(due.service)}</td><td>${money(svcPaid)}</td><td class="remain-cell">${money(Math.max(0,due.service-svcPaid))}</td><td><strong>${money(totalRemain)}</strong></td></tr>`;
-  }).join('') : `<tr><td colspan="10" class="empty-cell">${students.length ? 'Không tìm thấy học sinh phù hợp.' : 'Chưa có học sinh. Hãy tải file danh sách ban đầu.'}</td></tr>`;
+    const insPaid = num(paid.insurance), svcPaid = num(paid.service), otherPaid=num(paid.other);
+    const totalDue=studentDueItems(s).reduce((sum,x)=>sum+x.amount,0);
+    const totalRemain = Math.max(0,totalDue-(insPaid+svcPaid+otherPaid));
+    return `<tr><td><strong>${escapeHTML(s.code)}</strong></td><td>${escapeHTML(s.name)}</td><td>${escapeHTML(s.className || '—')}</td><td>${money(due.insurance)}</td><td>${money(insPaid)}</td><td class="remain-cell">${money(Math.max(0,due.insurance-insPaid))}</td><td>${money(due.service)}</td><td>${money(svcPaid)}</td><td class="remain-cell">${money(Math.max(0,due.service-svcPaid))}</td><td>${money(Math.max(0,due.other-otherPaid))}</td><td><strong>${money(totalRemain)}</strong></td></tr>`;
+  }).join('') : `<tr><td colspan="11" class="empty-cell">${students.length ? 'Không tìm thấy học sinh phù hợp.' : 'Chưa có học sinh. Hãy tải file danh sách ban đầu.'}</td></tr>`;
 }
 function renderClasses(students, transactions) {
   const groups = new Map();
@@ -353,7 +384,8 @@ function renderTransactions(transactions, limit) {
   const sorted=[...transactions].sort((a,b)=>(b.date||b.importedAt||'').localeCompare(a.date||a.importedAt||''));
   return (limit?sorted.slice(0,limit):sorted.slice(0,500)).map(t=>{
     const key=transactionCategory(t);const badgeClass=key==='service'?'service':key==='other'?'unknown':'';
-    return `<tr><td>${escapeHTML(t.date||'—')}</td><td>${escapeHTML(t.ref||t.id.slice(0,18))}</td><td><span class="category-badge ${badgeClass}">${getFeeLabel(key)}</span></td><td title="${escapeHTML(t.content)}">${escapeHTML((t.content||t.feeDetail||'—').slice(0,60))}</td><td>${escapeHTML(t.studentName||t.reportedStudentCode||'—')}</td><td><strong>${money(t.amount)}</strong></td><td><span class="status-badge ${t.matched?'':'unmatched'}">${t.matched?'Đã khớp':'Chưa khớp'}</span></td></tr>`;
+    const statuses={valid:'Khớp món thu',unmatched:'Không tìm thấy mã HS',missing_code:'Thiếu mã HS',amount_mismatch:'Sai số tiền món',missing_category:'Sai loại khoản',no_due:'Không có món phải thu',duplicate:'Trùng món thu',ambiguous:'Món tiền chưa phân biệt được'};
+    return `<tr><td>${escapeHTML(t.date||'—')}</td><td>${escapeHTML(t.ref||t.id.slice(0,18))}</td><td><span class="category-badge ${badgeClass}">${getFeeLabel(key)}</span></td><td title="${escapeHTML(t.content)}">${escapeHTML((t.content||t.feeDetail||'—').slice(0,60))}</td><td>${escapeHTML(t.studentName||t.reportedStudentCode||'—')}</td><td><strong>${money(t.amount)}</strong></td><td><span class="status-badge ${t.paymentStatus==='valid'?'':'unmatched'}">${statuses[t.paymentStatus]||'Chưa đối soát'}</span></td></tr>`;
   }).join('');
 }
 function renderFeeProgress(summaries) {
@@ -362,9 +394,9 @@ function renderFeeProgress(summaries) {
 }
 function renderChart(transactions) {
   const daily=new Map();
-  transactions.filter(t=>t.matched).forEach(t=>{const date=t.date||String(t.importedAt||'').slice(0,10)||'Chưa rõ ngày';daily.set(date,(daily.get(date)||0)+num(t.amount));});
+  transactions.filter(t=>t.paymentStatus==='valid').forEach(t=>{const date=t.date||String(t.importedAt||'').slice(0,10)||'Chưa rõ ngày';daily.set(date,(daily.get(date)||0)+num(t.amount));});
   const points=[...daily.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
-  $('#chartTotal').textContent=money(transactions.filter(t=>t.matched).reduce((sum,t)=>sum+num(t.amount),0)).replace(' ₫','');
+  $('#chartTotal').textContent=money(transactions.filter(t=>t.paymentStatus==='valid').reduce((sum,t)=>sum+num(t.amount),0)).replace(' ₫','');
   if(!points.length){$('#collectionChart').innerHTML='<div class="chart-empty">Chưa có giao dịch để lập biểu đồ.</div>';return;}
   let running=0;const values=points.map(([,amount])=>(running+=amount));const max=Math.max(...values,1);const width=480,height=165,pad={l:34,r:9,t:14,b:27};
   const coords=values.map((v,i)=>({x:pad.l+(points.length===1?(width-pad.l-pad.r)/2:i*(width-pad.l-pad.r)/(points.length-1)),y:pad.t+(1-v/max)*(height-pad.t-pad.b)}));
@@ -382,12 +414,14 @@ function renderFeeDetails(students, transactions, summaries) {
     return `<article class="panel fee-detail-card ${cls}"><div class="fee-detail-title"><div><h2>${s.label}</h2><p>${s.key==='insurance'?'Khoản thu bảo hiểm':'Gửi xe, nước uống và các dịch vụ khác'}</p></div><span class="category-badge ${s.key==='service'?'service':''}">${s.dueItems} món</span></div><div class="fee-total">${money(s.due)}</div><div class="fee-card-progress"><i style="width:${s.pct}%"></i></div><div class="fee-card-foot">Đã ghi nhận ${money(s.paid)} · Còn ${money(s.remain)} · ${s.pct}% giá trị</div><div class="fee-breakdown"><div><span>Phải thu</span><strong>${s.dueItems} món</strong></div><div><span>Đã thu đủ</span><strong>${s.paidItems} món</strong></div><div><span>Giao dịch</span><strong>${feeTx.length}</strong></div></div>${detailNames.length?`<div class="service-breakdown">${detailNames.map(n=>`<span class="service-chip">${escapeHTML(n)}</span>`).join('')}</div>`:''}</article>`;
   }).join(''):'<div class="panel empty-state">Chưa có số liệu theo từng khoản thu. Nhập danh sách học sinh và báo cáo thu để bắt đầu.</div>';
   const serviceTx=transactions.filter(t=>transactionCategory(t)==='service');const breakdown=new Map();
-  serviceTx.forEach(t=>{const key=t.feeDetail||serviceDetail('',t.content);const b=breakdown.get(key)||{count:0,codes:new Set(),amount:0};b.count++;if(t.studentCode||t.reportedStudentCode)b.codes.add(t.studentCode||t.reportedStudentCode);if(t.matched)b.amount+=num(t.amount);breakdown.set(key,b);});
+  serviceTx.forEach(t=>{const key=t.feeDetail||serviceDetail('',t.content);const b=breakdown.get(key)||{count:0,codes:new Set(),amount:0};b.count++;if(t.studentCode||t.reportedStudentCode)b.codes.add(t.studentCode||t.reportedStudentCode);if(t.paymentStatus==='valid')b.amount+=num(t.amount);breakdown.set(key,b);});
   $('#serviceTxnCount').textContent=`${serviceTx.length} giao dịch`;
   $('#serviceBreakdownTable').innerHTML=breakdown.size?[...breakdown.entries()].sort((a,b)=>b[1].amount-a[1].amount).map(([name,b])=>`<tr><td><strong>${escapeHTML(name)}</strong></td><td>${b.count}</td><td>${b.codes.size}</td><td><strong>${money(b.amount)}</strong></td></tr>`).join(''):'<tr><td colspan="4" class="empty-cell">Chưa có giao dịch dịch vụ.</td></tr>';
 }
 async function refresh() {
-  const [students,transactions,history]=await Promise.all([all('students'),all('transactions'),all('history')]);
+  const [students,storedTransactions,history]=await Promise.all([all('students'),all('transactions'),all('history')]);
+  const transactions=reconcileTransactions(students,storedTransactions);
+  if(transactions.some((t,i)=>t.paymentStatus!==storedTransactions[i]?.paymentStatus||t.matched!==storedTransactions[i]?.matched||t.studentCode!==storedTransactions[i]?.studentCode)) await putMany('transactions',transactions);
   const t=totals(students,transactions);const classes=new Set(students.map(s=>s.className).filter(Boolean));
   $('#statStudents').textContent=students.length.toLocaleString('vi-VN');$('#statClasses').textContent=students.length?`${classes.size} lớp`:'Chưa có danh sách';
   $('#statFeeItems').textContent=t.dueItems.toLocaleString('vi-VN');$('#statDueAmount').textContent=`${money(t.due)} phải thu`;
@@ -395,14 +429,15 @@ async function refresh() {
   $('#statUnpaidItems').textContent=t.unpaidItems.toLocaleString('vi-VN');$('#statRemainAmount').textContent=`${money(t.remain)} còn lại`;
   $('#completionPercent').textContent=`${t.pct}%`;
   $('#completionRing').style.background=`conic-gradient(var(--teal) ${t.pct*3.6}deg,#dce8e5 0deg)`;
-  const notice=students.length?`${students.length} học sinh · ${transactions.length} giao dịch đang được lưu riêng trên máy này.`:'Chọn danh sách học sinh và báo cáo thu để bắt đầu theo dõi.';
+  const legacy=students.some(s=>!s.hasFeeBreakdown);
+  const notice=students.length?`${students.length} học sinh · ${transactions.filter(x=>x.paymentStatus==='valid').length} món thu khớp chính xác / ${transactions.length} giao dịch. ${legacy?'Danh sách cũ chỉ có tổng phải thu; hãy nhập lại file chi tiết từng khoản.':'Dữ liệu đang lưu riêng trên máy này.'}`:'Chọn danh sách học sinh và báo cáo thu để bắt đầu theo dõi.';
   $('#dataNoticeText').textContent=notice;
   renderFeeProgress(t.summaries);renderChart(transactions);renderClasses(students,transactions);renderStudents(students,transactions);renderFeeDetails(students,transactions,t.summaries);
   const transactionHtml=transactions.length?renderTransactions(transactions):'<tr><td colspan="7" class="empty-cell">Chưa có báo cáo thu.</td></tr>';
   $('#transactionsTable').innerHTML=transactionHtml;$('#importsTransactionsTable').innerHTML=transactionHtml;
   ['allTxnCount','importsAllTxnCount'].forEach(id=>{const el=$(`#${id}`);if(el)el.textContent=transactions.length;});
-  ['matchedTxnCount','importsMatchedTxnCount'].forEach(id=>{const el=$(`#${id}`);if(el)el.textContent=transactions.filter(x=>x.matched).length;});
-  ['unmatchedTxnCount','importsUnmatchedTxnCount'].forEach(id=>{const el=$(`#${id}`);if(el)el.textContent=transactions.filter(x=>!x.matched).length;});
+  ['matchedTxnCount','importsMatchedTxnCount'].forEach(id=>{const el=$(`#${id}`);if(el)el.textContent=transactions.filter(x=>x.paymentStatus==='valid').length;});
+  ['unmatchedTxnCount','importsUnmatchedTxnCount'].forEach(id=>{const el=$(`#${id}`);if(el)el.textContent=transactions.filter(x=>x.paymentStatus!=='valid').length;});
   $('#recentTransactions').innerHTML=transactions.length?[...transactions].sort((a,b)=>(b.importedAt||'').localeCompare(a.importedAt||'')).slice(0,4).map(x=>`<div class="recent-row"><strong><span class="category-badge ${transactionCategory(x)==='service'?'service':''}">${getFeeLabel(transactionCategory(x))}</span> ${escapeHTML(x.studentName||x.content||'Giao dịch thu')}</strong><span>${escapeHTML(x.date||'—')}</span><b>${money(x.amount)}</b></div>`).join(''):'<div class="empty-inline">Chưa có giao dịch được nhập.</div>';
   $('#historyTable').innerHTML=history.length?history.sort((a,b)=>b.at.localeCompare(a.at)).map(h=>`<tr><td>${dateTime(h.at)}</td><td>${escapeHTML(h.kind)}</td><td>${escapeHTML(h.fileName)}</td><td>${h.rows}</td><td>${escapeHTML(h.detail)}</td></tr>`).join(''):'<tr><td colspan="5" class="empty-cell">Chưa có lịch sử nhập file.</td></tr>';
   $('#storageStatus').textContent='Kho trình duyệt đã sẵn sàng';
@@ -438,8 +473,8 @@ async function restore(file) {
 }
 function exportStudents() {
   all('students').then(items=>{
-    const headers=['Mã học sinh','Họ và tên','Lớp','Số tiền phải thu','Bảo hiểm phải thu','Dịch vụ khác phải thu'];
-    const lines=items.map(s=>{const due=studentDueByCategory(s);return [s.code,s.name,s.className,s.due,due.insurance,due.service].map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',');});
+    const headers=['Mã học sinh','Họ và tên','Lớp','Số tiền phải thu','Bảo hiểm phải thu','Dịch vụ khác phải thu','Gửi xe phải thu','Nước uống phải thu'];
+    const lines=items.map(s=>{const fees=studentDueItems(s);const amt=name=>fees.filter(x=>slug(x.name)===slug(name)).reduce((sum,x)=>sum+x.amount,0);const insurance=fees.filter(x=>x.category==='insurance').reduce((sum,x)=>sum+x.amount,0);const service=fees.filter(x=>x.category==='service'&&!['gui xe','nuoc uong'].includes(slug(x.name))).reduce((sum,x)=>sum+x.amount,0);return [s.code,s.name,s.className,s.due,insurance,service,amt('Gửi xe'),amt('Nước uống')].map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',');});
     download('danh-sach-hoc-sinh.csv','\uFEFF'+headers.join(',')+'\r\n'+lines.join('\r\n'),'text/csv;charset=utf-8');
   });
 }
