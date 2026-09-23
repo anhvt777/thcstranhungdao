@@ -1,31 +1,25 @@
-# Sổ thu học sinh
+# SchoolCollect · Quản lý thu học sinh
 
-Ứng dụng web tĩnh, không cần tài khoản ChatGPT. Mã nguồn có thể được lưu trong GitHub và chạy trên GitHub Pages; danh sách học sinh, giao dịch, lịch sử và bản sao lưu **không được đưa vào repository**.
+Ứng dụng web tĩnh để theo dõi sĩ số, khoản phải thu và kết quả đối soát. Giao diện tối ưu cho máy tính kế toán và hiệu trưởng, đồng thời dùng được trên điện thoại.
 
-## Thiết kế dữ liệu
+## Quyền riêng tư
 
-- Trang web đọc tệp ngay trong trình duyệt; không có API gửi tệp lên máy chủ và không dùng analytics/CDN.
-- Dữ liệu ứng dụng nằm trong IndexedDB của hồ sơ trình duyệt hiện tại. Mỗi máy/hồ sơ trình duyệt có dữ liệu riêng.
-- Có thể dùng ngoại tuyến sau lần mở web đầu tiên khi service worker đã lưu bộ giao diện.
-- Có thể xuất bản sao lưu `.sctbackup` mã hóa AES-GCM bằng mật khẩu; mật khẩu không được lưu trong web.
-- GitHub Pages chỉ nên chứa mã nguồn và tài sản giao diện. Không commit tệp học sinh, sao kê, bản sao lưu hoặc tệp cấu hình có dữ liệu thật.
+- Đọc file ngay trong trình duyệt; không có API gửi file lên máy chủ và không dùng analytics/CDN.
+- Học sinh, khoản thu, giao dịch và lịch sử được lưu trong IndexedDB của trình duyệt trên thiết bị đang sử dụng.
+- Các máy không tự đồng bộ với nhau. Có thể chuyển dữ liệu bằng tệp sao lưu `.sctbackup` được mã hóa AES-GCM bằng mật khẩu.
+- GitHub Pages chỉ lưu mã nguồn và giao diện. Không commit danh sách học sinh, sao kê hoặc tệp sao lưu có dữ liệu thật.
+- Có thể dùng ngoại tuyến sau lần mở web đầu tiên khi service worker đã lưu giao diện.
 
-## Nhập file hiện có
+## Nhập dữ liệu
 
-- Đọc tệp `.xlsx` (trang tính đầu tiên) trực tiếp trên máy bằng bộ đọc ZIP/XML tích hợp; không tải thư viện từ CDN.
-- Đọc `.csv`, `.tsv`, `.txt`, hiển thị bản xem trước và cho phép ghép cột.
-- Danh sách học sinh: ghép mã học sinh, họ tên, lớp, khoản phải thu; nhập lại cùng mã sẽ cập nhật học sinh đó.
-- Báo cáo ngân hàng: ghép số tiền, mã học sinh, mã giao dịch, ngày, nội dung; giao dịch trùng mã tham chiếu được bỏ qua. Nếu không có mã học sinh, giao dịch được giữ ở trạng thái chưa khớp.
+- Hỗ trợ `.xlsx` (đọc trang tính đầu tiên), `.csv`, `.tsv` và `.txt`; không tải thư viện từ CDN.
+- Danh sách học sinh: ghép mã học sinh, họ tên, lớp; có thể nhập tổng phải thu hoặc tách riêng Bảo hiểm và Dịch vụ khác.
+- Báo cáo thu: ghép số tiền, mã học sinh, mã giao dịch, ngày, nội dung và loại khoản thu. Giao dịch trùng mã tham chiếu được bỏ qua.
+- Dịch vụ khác có thể xem chi tiết theo nội dung chuyển khoản như gửi xe, nước uống. Mã học sinh không tìm thấy sẽ hiện là chưa khớp.
+- Số đã thu được đối chiếu riêng theo loại khoản thu khi file ngân hàng có cột “Khoản thu”. Nếu không có cột này, trang thử nhận diện từ nội dung giao dịch.
 
-## Phần cần cấu hình sau khi nhận file mẫu
+## Triển khai
 
-1. Cố định dòng tiêu đề, tên sheet, cột cần lấy và cách đọc ngày/tiền trong file trường.
-2. Cố định cột định danh học sinh trong nội dung giao dịch ngân hàng và quy tắc ghép chính xác.
-3. Xác định cách tính khi một học sinh có nhiều khoản thu, miễn giảm, hoàn tiền hoặc giao dịch đảo.
-4. Kiểm thử bằng bản sao file đã ẩn thông tin nhạy cảm; đối chiếu tổng dòng và tổng tiền với báo cáo gốc.
+Mở qua máy chủ web tĩnh HTTPS, chẳng hạn GitHub Pages. Tránh mở trực tiếp bằng `file://` vì trình duyệt có thể chặn IndexedDB và service worker. Với GitHub Pages của repository, đặt `index.html` ở thư mục gốc của nhánh được chọn làm nguồn Pages.
 
-Bản nền không có đăng nhập, phân quyền kế toán/hiệu trưởng hoặc đồng bộ tự động giữa các máy. Chỉ dùng dữ liệu thật sau khi nhà trường chốt quy trình bảo vệ máy, sao lưu, và kiểm tra đối soát trên file mẫu.
-
-## Chạy thử
-
-Mở bằng một máy chủ web tĩnh trên HTTPS (GitHub Pages phù hợp). Tránh mở trực tiếp bằng `file://`, vì trình duyệt có thể chặn IndexedDB/service worker. Với GitHub Pages của project repository, đặt `index.html` ở thư mục gốc của nhánh được chọn làm nguồn Pages.
+Trước khi dùng dữ liệu thật, hãy đối chiếu tên cột và cách ghi mã học sinh trong file gốc của trường/ngân hàng; kiểm tra tổng số dòng và tổng tiền với báo cáo nguồn.
