@@ -13,10 +13,11 @@
 ## Nhập dữ liệu
 
 - Hỗ trợ `.xlsx` (đọc trang tính đầu tiên), `.csv`, `.tsv` và `.txt`; không tải thư viện từ CDN.
-- Danh sách học sinh: ghép mã học sinh, họ tên, lớp; có thể nhập tổng phải thu hoặc tách riêng Bảo hiểm và Dịch vụ khác.
+- Danh sách học sinh: ghép mã học sinh, họ tên, lớp; nên nhập số phải thu riêng cho Bảo hiểm và từng dịch vụ (ví dụ Gửi xe, Nước uống). Nếu chỉ có tổng, khoản đó được giữ ở mục Chưa phân loại.
 - Báo cáo thu: ghép số tiền, mã học sinh, mã giao dịch, ngày, nội dung và loại khoản thu. Giao dịch trùng mã tham chiếu được bỏ qua.
 - Dịch vụ khác có thể xem chi tiết theo nội dung chuyển khoản như gửi xe, nước uống. Mã học sinh không tìm thấy sẽ hiện là chưa khớp.
-- Số đã thu được đối chiếu riêng theo loại khoản thu khi file ngân hàng có cột “Khoản thu”. Nếu không có cột này, trang thử nhận diện từ nội dung giao dịch.
+- Một giao dịch chỉ được tính đã thu khi mã học sinh, loại khoản và số tiền khớp chính xác với một món phải thu chưa được ghép. Giao dịch sai số tiền, sai khoản, trùng món hoặc không xác định được duy nhất sẽ không cộng vào số đã thu.
+- Báo cáo ngân hàng nên có cột “Khoản thu” và mã học sinh. Nếu thiếu loại khoản, trang thử nhận diện từ nội dung giao dịch.
 
 ## Triển khai
 
