@@ -300,6 +300,7 @@ function setPage(page) {
     dashboard:['Tổng quan','Theo dõi tiến độ thu theo thời gian thực trên thiết bị này'],
     students:['Học sinh','Danh sách và số phải thu chi tiết theo từng học sinh'],
     fees:['Khoản thu','Theo dõi riêng bảo hiểm, dịch vụ khác và từng nội dung dịch vụ'],
+    qr:['Tạo mã QR','Tạo QR thanh toán theo từng món thu của từng học sinh'],
     imports:['Nhập dữ liệu','Cập nhật danh sách học sinh và báo cáo thu gần nhất'],
     history:['Tra cứu & báo cáo','Lịch sử các lần nhập dữ liệu trên thiết bị này'],
     settings:['Sao lưu & cài đặt','Bảo vệ và chuyển dữ liệu theo quy trình của trường']
@@ -429,8 +430,64 @@ function renderFeeDetails(students, transactions, summaries) {
   $('#serviceTxnCount').textContent=`${serviceTx.length} giao dịch`;
   $('#serviceBreakdownTable').innerHTML=breakdown.size?[...breakdown.entries()].sort((a,b)=>b[1].amount-a[1].amount).map(([name,b])=>`<tr><td><strong>${escapeHTML(name)}</strong></td><td>${b.count}</td><td>${b.codes.size}</td><td><strong>${money(b.amount)}</strong></td></tr>`).join(''):'<tr><td colspan="4" class="empty-cell">Chưa có giao dịch dịch vụ.</td></tr>';
 }
+function qrText(value,maxLength=25){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toUpperCase().replace(/[^A-Z0-9 _.-]/g,' ').replace(/\s+/g,' ').trim().slice(0,maxLength);}
+function emvTag(id,value){const text=String(value);if(text.length>99)throw new Error(`Trường QR ${id} vượt độ dài cho phép.`);return id+String(text.length).padStart(2,'0')+text;}
+function crc16ccitt(value){let crc=0xFFFF;for(let i=0;i<value.length;i++){crc^=value.charCodeAt(i)<<8;for(let bit=0;bit<8;bit++)crc=crc&0x8000?(crc<<1)^0x1021:crc<<1;crc&=0xFFFF;}return crc.toString(16).toUpperCase().padStart(4,'0');}
+function buildVietQrPayload(config,amount,remark){
+  const accountInfo=emvTag('00','A000000727')+emvTag('01',emvTag('00',config.bin)+emvTag('01',config.accountNumber))+emvTag('02','QRIBFTTA');
+  const reference=emvTag('08',qrText(remark,25));
+  let payload='000201010212'+emvTag('38',accountInfo)+'52040000'+'5303704'+emvTag('54',String(num(amount)))+'5802VN'+emvTag('59',qrText(config.accountName,25))+'6007DONGHA'+emvTag('62',reference)+'6304';
+  payload+=crc16ccitt(payload);return payload;
+}
+function qrCandidates(students,transactions){
+  const paid=new Set(transactions.filter(t=>t.paymentStatus==='valid').map(t=>`${t.studentCode}|${t.matchedDueItemId||''}`));
+  return students.flatMap(student=>studentDueItems(student).filter(item=>item.category!=='other'&&!item.legacy&&item.amount>0).map(item=>({student,item,paid:paid.has(`${student.code}|${item.id}`)})));
+}
+function renderQrPage(students,transactions,config){
+  if(config){$('#qrBankBin').value=config.bin||'';$('#qrAccountNumber').value=config.accountNumber||'';$('#qrAccountName').value=config.accountName||'';$('#qrConfigStatus').textContent='Đã lưu trên thiết bị này';}
+  $('#downloadQrs').hidden=true;$('#qrSelectionCount').textContent='Chưa có QR được tạo';$('#qrPreviewGrid').innerHTML='<div class="panel qr-empty-state">Chọn điều kiện rồi bấm “Tạo QR”.</div>';
+  const currentClass=$('#qrClassFilter').value||'all';const classes=[...new Set(students.map(s=>s.className).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
+  $('#qrClassFilter').innerHTML='<option value="all">Tất cả lớp</option>'+classes.map(name=>`<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join('');
+  if(classes.includes(currentClass))$('#qrClassFilter').value=currentClass;
+  const candidates=qrCandidates(students,transactions);$('#qrDueCount').textContent=`${candidates.filter(x=>!x.paid).length} món còn phải thu`;
+  if(students.some(s=>!s.hasFeeBreakdown))$('#qrPreviewSummary').textContent='Có học sinh chưa có dữ liệu chi tiết từng khoản. Hãy nhập lại danh sách phải thu để tạo QR chính xác.';
+}
+async function saveQrConfig(){
+  const config={key:'qrAccount',bin:$('#qrBankBin').value.trim(),accountNumber:$('#qrAccountNumber').value.trim(),accountName:qrText($('#qrAccountName').value,25)};
+  if(!/^\d{6}$/.test(config.bin))return toast('Mã BIN cần có đúng 6 chữ số.',true);
+  if(!/^\d{4,30}$/.test(config.accountNumber))return toast('Hãy nhập số tài khoản nhận gồm 4–30 chữ số.',true);
+  if(!config.accountName)return toast('Hãy nhập tên chủ tài khoản.',true);
+  await request('meta','put',config);$('#qrAccountName').value=config.accountName;$('#qrConfigStatus').textContent='Đã lưu trên thiết bị này';toast('Đã lưu tài khoản nhận cục bộ.');
+}
+function qrFilename(entry){return `${slug(entry.student.className||'lop')}_${slug(entry.student.name)}_${slug(entry.student.code)}_${slug(entry.item.name)}.png`;}
+function renderQrCards(entries){
+  if(!entries.length){$('#qrPreviewGrid').innerHTML='<div class="panel qr-empty-state">Không có món phù hợp với điều kiện đã chọn.</div>';return;}
+  $('#qrPreviewGrid').innerHTML=entries.map((entry,index)=>`<article class="panel qr-result-card"><div class="qr-result-top"><span class="category-badge ${entry.item.category==='service'?'service':''}">${escapeHTML(entry.item.name)}</span><span class="qr-class-tag">${escapeHTML(entry.student.className||'Chưa xếp lớp')}</span></div><div class="qr-person"><strong>${escapeHTML(entry.student.name)}</strong><small>${escapeHTML(entry.student.code)}</small></div><img src="${entry.png}" alt="Mã QR ${escapeHTML(entry.student.code)} ${escapeHTML(entry.item.name)}"><div class="qr-amount">${money(entry.item.amount)}</div><div class="qr-result-footer"><span>${escapeHTML(entry.remark)}</span><a class="button button-outline button-small" href="${entry.png}" download="${escapeHTML(entry.filename)}">Lưu PNG</a></div></article>`).join('');
+}
+async function generateQrs(){
+  const config=await request('meta','get','qrAccount');if(!config?.bin||!config?.accountNumber||!config?.accountName)return toast('Hãy lưu tài khoản nhận tiền của trường trước.',true);
+  if(typeof QRCode==='undefined'||typeof JSZip==='undefined')return toast('Thiếu bộ tạo ảnh cục bộ. Tải lại trang sau khi kết nối mạng.',true);
+  const [students,stored]=await Promise.all([all('students'),all('transactions')]);const transactions=reconcileTransactions(students,stored);
+  const className=$('#qrClassFilter').value,fee=$('#qrFeeFilter').value,status=$('#qrStatusFilter').value;
+  const entries=qrCandidates(students,transactions).filter(x=>(className==='all'||x.student.className===className)&&(fee==='all'||x.item.category===fee)&&(status==='all'||!x.paid));
+  if(!entries.length)return toast('Không có món phải thu phù hợp để tạo QR.',true);
+  const output=[];const unique=new Set();
+  for(const entry of entries){
+    const key=`${entry.student.code}|${entry.item.id}`;if(unique.has(key))continue;unique.add(key);
+    const code=entry.item.category==='insurance'?'BH':qrText(entry.item.name,12).replace(/\s+/g,'');
+    const remark=qrText(`${entry.student.code} ${code}`,25);const payload=buildVietQrPayload(config,entry.item.amount,remark);
+    const holder=document.createElement('div');new QRCode(holder,{text:payload,width:240,height:240,correctLevel:QRCode.CorrectLevel.M});
+    const canvas=holder.querySelector('canvas');if(!canvas)throw new Error('Không tạo được ảnh QR trên trình duyệt này.');
+    output.push({...entry,remark,filename:qrFilename(entry),png:canvas.toDataURL('image/png')});
+  }
+  renderQrCards(output);$('#qrSelectionCount').textContent=`${output.length} ảnh QR đã tạo`;
+  $('#qrPreviewSummary').textContent=`${output.length} mã, mỗi mã gắn với đúng một học sinh và một món thu.`;
+  const zip=new JSZip();for(const item of output)zip.folder(qrText(item.student.className||'Chua_xep_lop',30)||'Chua_xep_lop').file(item.filename,item.png.split(',')[1],{base64:true});
+  $('#downloadQrs').onclick=async()=>{const blob=await zip.generateAsync({type:'blob'});download(`SchoolCollect_QR_${new Date().toISOString().slice(0,10)}.zip`,blob,'application/zip');};
+  $('#downloadQrs').hidden=false;
+}
 async function refresh() {
-  const [students,storedTransactions,history]=await Promise.all([all('students'),all('transactions'),all('history')]);
+  const [students,storedTransactions,history,qrConfig]=await Promise.all([all('students'),all('transactions'),all('history'),request('meta','get','qrAccount')]);
   const transactions=reconcileTransactions(students,storedTransactions);
   const priorById=new Map(storedTransactions.map(t=>[t.id,t]));
   if(transactions.some(t=>{const old=priorById.get(t.id);return !old||['paymentStatus','matched','studentCode','studentName','matchedDueItem','matchedDueItemId'].some(key=>t[key]!==old[key]);})) await putMany('transactions',transactions);
@@ -445,6 +502,7 @@ async function refresh() {
   const notice=students.length?`${students.length} học sinh · ${transactions.filter(x=>x.paymentStatus==='valid').length} món thu khớp chính xác / ${transactions.length} giao dịch. ${legacy?'Danh sách cũ chỉ có tổng phải thu; hãy nhập lại file chi tiết từng khoản.':'Dữ liệu đang lưu riêng trên máy này.'}`:'Chọn danh sách học sinh và báo cáo thu để bắt đầu theo dõi.';
   $('#dataNoticeText').textContent=notice;
   renderFeeProgress(t.summaries);renderChart(transactions);renderClasses(students,transactions);renderStudents(students,transactions);renderFeeDetails(students,transactions,t.summaries);
+  renderQrPage(students,transactions,qrConfig);
   const transactionHtml=transactions.length?renderTransactions(transactions):'<tr><td colspan="7" class="empty-cell">Chưa có báo cáo thu.</td></tr>';
   $('#transactionsTable').innerHTML=transactionHtml;$('#importsTransactionsTable').innerHTML=transactionHtml;
   ['allTxnCount','importsAllTxnCount'].forEach(id=>{const el=$(`#${id}`);if(el)el.textContent=transactions.length;});
@@ -461,7 +519,7 @@ async function backup() {
   const password=prompt('Đặt mật khẩu cho tệp sao lưu (ít nhất 8 ký tự):');if(password===null)return;
   if(password.length<8)return toast('Mật khẩu cần có ít nhất 8 ký tự.',true);
   try {
-    const data=JSON.stringify({version:1,createdAt:new Date().toISOString(),students:await all('students'),transactions:await all('transactions'),history:await all('history')});
+    const data=JSON.stringify({version:1,createdAt:new Date().toISOString(),students:await all('students'),transactions:await all('transactions'),history:await all('history'),meta:await all('meta')});
     const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
     const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
     const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:250000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt']);
@@ -479,7 +537,7 @@ async function restore(file) {
     const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:250000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
     const raw=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,cipher);const data=JSON.parse(new TextDecoder().decode(raw));
     if(!confirm('Khôi phục sẽ thay thế toàn bộ dữ liệu hiện có trên máy này. Tiếp tục?'))return;
-    await clearAll();await Promise.all([putMany('students',data.students||[]),putMany('transactions',data.transactions||[]),putMany('history',data.history||[])]);
+    await clearAll();await Promise.all([putMany('students',data.students||[]),putMany('transactions',data.transactions||[]),putMany('history',data.history||[]),putMany('meta',data.meta||[])]);
     await refresh();toast('Đã khôi phục dữ liệu từ bản sao lưu.');
   } catch(e) { console.error(e);toast('Không mở được bản sao lưu. Kiểm tra đúng tệp và mật khẩu.',true); }
 }
@@ -501,6 +559,8 @@ function wire() {
   $('#modalClose').onclick=$('#modalCancel').onclick=closeModal;$('#modalConfirm').onclick=confirmImport;
   $('#modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop')closeModal();});
   $('#studentSearch').addEventListener('input',async()=>renderStudents(await all('students'),await all('transactions')));
+  $('#saveQrConfig').onclick=saveQrConfig;$('#generateQrs').onclick=()=>generateQrs().catch(e=>{console.error(e);toast(e.message||'Không tạo được mã QR.',true);});
+  ['qrFeeFilter','qrClassFilter','qrStatusFilter'].forEach(id=>$(`#${id}`).addEventListener('change',()=>$('#downloadQrs').hidden=true));
   $('#exportStudents').onclick=exportStudents;$('#backupButton').onclick=$('#backupButtonTop').onclick=backup;$('#restoreButton').onclick=()=>$('#restoreFileInput').click();
   $('#clearDataButton').onclick=async()=>{if(confirm('Xóa toàn bộ dữ liệu học sinh, giao dịch và lịch sử trên trình duyệt này?')){await clearAll();await refresh();toast('Đã xóa dữ liệu trên máy này.');}};
   $('#menuToggle').onclick=()=>$('#sidebar').classList.toggle('open');
