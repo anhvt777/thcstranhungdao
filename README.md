@@ -12,12 +12,12 @@
 
 ## Nhập dữ liệu
 
-- Hỗ trợ `.xlsx` (đọc trang tính đầu tiên), `.csv`, `.tsv` và `.txt`; không tải thư viện từ CDN.
-- Danh sách học sinh: ghép mã học sinh, họ tên, lớp; nên nhập số phải thu riêng cho Bảo hiểm và từng dịch vụ (ví dụ Gửi xe, Nước uống). Nếu chỉ có tổng, khoản đó được giữ ở mục Chưa phân loại.
-- Báo cáo thu: ghép số tiền, mã học sinh, mã giao dịch, ngày, nội dung và loại khoản thu. Giao dịch trùng mã tham chiếu được bỏ qua.
+- Hỗ trợ `.xlsx`, `.csv`, `.tsv` và `.txt`; trong Excel nhiều trang tính, tự chọn trang có tiêu đề phù hợp và nhiều dòng dữ liệu nhất. Không tải thư viện từ CDN.
+- Danh sách theo mẫu trường có hai dòng cho mỗi học sinh. Web gộp theo “Mã học sinh”, lưu riêng mã “Mã HS theo Khoản nộp”, loại khoản BHYT/BHTT và số tiền; kiểm tra trùng mã và thiếu khoản trước khi lưu.
+- Báo cáo ngân hàng: nhận diện “Mã khách hàng”, “Số hóa đơn”, “Ngày giao dịch”, “Tên khách hàng”, “Số tiền” và “Trạng thái giao dịch”. Mã khách hàng đuôi YT được ghép với BHYT, đuôi TT được ghép với BHTT. Trạng thái không thành công không được tính đã thu.
 - Dịch vụ khác có thể xem chi tiết theo nội dung chuyển khoản như gửi xe, nước uống. Mã học sinh không tìm thấy sẽ hiện là chưa khớp.
-- Một giao dịch chỉ được tính đã thu khi mã học sinh, loại khoản và số tiền khớp chính xác với một món phải thu chưa được ghép. Giao dịch sai số tiền, sai khoản, trùng món hoặc không xác định được duy nhất sẽ không cộng vào số đã thu.
-- Báo cáo ngân hàng nên có cột “Khoản thu” và mã học sinh. Nếu thiếu loại khoản, trang thử nhận diện từ nội dung giao dịch.
+- Một giao dịch chỉ được tính đã thu khi mã khách hàng/mã khoản, loại khoản, trạng thái thành công và số tiền khớp chính xác với một món phải thu chưa được ghép. Giao dịch sai số tiền, sai khoản, trùng món hoặc không tìm thấy học sinh không cộng vào số đã thu.
+- Các mẫu CSV/XLSX cũ với mã học sinh và cột khoản thu vẫn được hỗ trợ qua bước ghép cột.
 - Tạo mã QR: lưu một lần mã BIN, số tài khoản và tên chủ tài khoản của trường; sau đó tạo ảnh QR riêng cho từng món phải thu, lọc theo lớp và tải ZIP. Nội dung thanh toán được tạo thành ảnh QR và đóng gói ngay trong trình duyệt bằng thư viện cục bộ.
 - QR mặc định chỉ tạo cho món chưa có giao dịch khớp chính xác. Sau khi cập nhật báo cáo thu, danh sách QR được tính lại. Hãy quét thử bằng ứng dụng ngân hàng trước khi gửi cho phụ huynh.
 
