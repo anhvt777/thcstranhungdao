@@ -1,4 +1,4 @@
-const CACHE_NAME = 'so-thu-hoc-sinh-shell-v5';
+const CACHE_NAME = 'so-thu-hoc-sinh-shell-v6';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './manifest.json', './icon.svg', './vendor/qrcode.min.js', './vendor/jszip.min.js'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)));
