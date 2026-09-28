@@ -9,3 +9,29 @@
 @media(max-width:560px){.qr-config-grid,.qr-filter-grid{grid-template-columns:1fr}.qr-field-wide{grid-column:auto}.qr-create-actions{flex-wrap:wrap}.qr-create-actions .button{margin-left:0}.qr-result-card{padding:11px}}
 
 .qr-external-link{text-decoration:none}.external-link-mark{margin-left:auto;font-size:12px;opacity:.72}
+
+
+/* Mobile class summary: show all classes without horizontal scrolling */
+@media(max-width:560px){
+  .class-summary-panel{padding:13px 10px 8px}
+  .class-summary-panel .panel-header{margin-bottom:8px}
+  .class-summary-panel .panel-header .text-button{display:none}
+  .class-summary-panel .table-wrap{overflow:visible}
+  .class-summary-panel table{font-size:10px;table-layout:fixed}
+  .class-summary-panel th,.class-summary-panel td{padding:9px 4px;white-space:normal}
+  .class-summary-panel th{font-size:7.5px;letter-spacing:.1px;line-height:1.2}
+  .class-summary-panel th:nth-child(1){width:13%}
+  .class-summary-panel th:nth-child(2){width:11%}
+  .class-summary-panel th:nth-child(3){width:17%}
+  .class-summary-panel th:nth-child(4){width:15%}
+  .class-summary-panel th:nth-child(5){width:25%}
+  .class-summary-panel th:nth-child(6){width:19%}
+  .class-summary-panel td:nth-child(1){font-size:11px}
+  .class-summary-panel td:nth-child(2),
+  .class-summary-panel td:nth-child(3),
+  .class-summary-panel td:nth-child(4){text-align:center}
+  .class-summary-panel td:nth-child(5){font-size:9px;text-align:right;white-space:nowrap}
+  .class-progress{min-width:0;display:grid;grid-template-columns:1fr;gap:3px}
+  .class-progress>span:first-child{text-align:center;font-size:9px}
+  .class-progress .tiny-track{width:100%;height:4px}
+}
