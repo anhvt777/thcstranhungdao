@@ -336,12 +336,20 @@ async function confirmImport() {
       const id = normalizedRef ? `ref:${normalizedRef}` : `row:${slug(date)}:${amount}:${slug(code || content)}:${i}`;
       return { id, ref, date, content, amount, feeCategory, feeDetail, reportedStudentCode:code, reportedPaymentCode:code, bankStatus, studentCode:student?.code || '', studentName:student?.name || '', sourceFile:file.name, importedAt:now, matched:!!student };
     }).filter(Boolean);
-    const oldItems=await all('transactions'),oldById=new Map(oldItems.map(t=>[t.id,t]));
-    const additions=[],updates=[];let duplicates=0;
-    for(const t of items){const old=oldById.get(t.id);if(!old){additions.push(t);oldById.set(t.id,t);}else if(!isSuccessfulBankStatus(old.bankStatus)&&isSuccessfulBankStatus(t.bankStatus)){updates.push(t);oldById.set(t.id,t);}else duplicates++;}
-    await putMany('transactions',[...additions,...updates]);
-    summary = { rows:dataRows.length, imported:items.length, detail:`${additions.length} giao dịch mới · ${updates.length} giao dịch cập nhật thành công · ${duplicates} dòng trùng được bỏ qua` };
-    $('#bankLastImport').textContent = `Gần nhất: ${file.name} · ${additions.length.toLocaleString('vi-VN')} giao dịch mới`;
+    // Báo cáo thu mới nhất là ảnh chụp đầy đủ tại thời điểm xuất file.
+    // Đồng bộ theo file hiện tại thay vì cộng dồn với các lần nhập trước,
+    // tránh giữ lại giao dịch đã biến mất khỏi báo cáo mới.
+    const uniqueById=new Map();
+    let duplicates=0;
+    for(const t of items){
+      if(uniqueById.has(t.id)) duplicates++;
+      uniqueById.set(t.id,t);
+    }
+    const snapshot=[...uniqueById.values()];
+    await request('transactions','clear');
+    await putMany('transactions',snapshot);
+    summary = { rows:dataRows.length, imported:snapshot.length, detail:`${snapshot.length} giao dịch được đồng bộ theo báo cáo mới nhất${duplicates ? ` · ${duplicates} dòng trùng trong file được gộp` : ''}` };
+    $('#bankLastImport').textContent = `Gần nhất: ${file.name} · ${snapshot.length.toLocaleString('vi-VN')} giao dịch`;
   }
   await request('history', 'put', { id:crypto.randomUUID(), kind:kind === 'students' ? 'Danh sách học sinh' : 'Báo cáo thu', fileName:file.name, rows:summary.rows, imported:summary.imported, detail:summary.detail, at:now });
   closeModal(); await refresh(); toast(summary.detail);
