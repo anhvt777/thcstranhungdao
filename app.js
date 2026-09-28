@@ -466,7 +466,9 @@ function renderStudents(students, transactions) {
 function renderClasses(students, transactions) {
   const groups = new Map();
   students.forEach(s => { const key=s.className||'Chưa xếp lớp'; const g=groups.get(key)||{students:[],count:0,due:0,paid:0,dueItems:0,paidItems:0};g.students.push(s);g.count++;groups.set(key,g); });
-  const rows = [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'vi')).slice(0,30);
+  // Render every class. Do not cap the dashboard list: a 30-row limit hid grade 9
+  // whenever the school had more than 30 classes. numeric:true keeps 9A2 before 9A10.
+  const rows = [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'vi',{numeric:true,sensitivity:'base'}));
   $('#classTable').innerHTML = rows.length ? rows.map(([name,g])=>{
     const codes=new Set(g.students.map(s=>s.code));const classTransactions=transactions.filter(t=>codes.has(t.studentCode));
     const m=totals(g.students,classTransactions);const pct=m.due?Math.min(100,Math.round(m.paid/m.due*100)):0;
