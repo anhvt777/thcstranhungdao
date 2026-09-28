@@ -145,6 +145,13 @@
   <input type="file" id="studentFileInput" accept=".xlsx,.csv,.tsv,.txt" hidden>
   <input type="file" id="bankFileInput" accept=".xlsx,.csv,.tsv,.txt" hidden>
   <input type="file" id="restoreFileInput" accept=".sctbackup" hidden>
+  <div class="class-detail-backdrop" id="classDetailBackdrop">
+    <section class="class-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="classDetailTitle">
+      <div class="class-detail-head"><div><span class="eyebrow">CHI TIẾT THEO LỚP</span><h2 id="classDetailTitle">Lớp</h2><p id="classDetailSubtitle"></p></div><button class="icon-button" id="classDetailClose" aria-label="Đóng">×</button></div>
+      <div class="class-fee-summary" id="classFeeSummary"></div>
+      <div class="class-detail-table-wrap"><table class="class-detail-table"><thead><tr><th>MÃ HS</th><th>HỌ VÀ TÊN</th><th>CÁC KHOẢN NỘP</th></tr></thead><tbody id="classStudentTable"></tbody></table></div>
+    </section>
+  </div>
   <div class="toast" id="toast" role="status"></div>
   <div class="modal-backdrop" id="modalBackdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-header"><div><div class="eyebrow" id="modalEyebrow">NHẬP FILE</div><h2 id="modalTitle">Ghép cột dữ liệu</h2></div><button class="icon-button" id="modalClose" aria-label="Đóng">×</button></div><div id="modalBody"></div><div class="modal-actions"><button class="button button-outline" id="modalCancel">Hủy</button><button class="button button-primary" id="modalConfirm">Xác nhận nhập</button></div></section></div>
   <script src="vendor/qrcode.min.js"></script>
