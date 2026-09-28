@@ -472,8 +472,44 @@ function renderClasses(students, transactions) {
   $('#classTable').innerHTML = rows.length ? rows.map(([name,g])=>{
     const codes=new Set(g.students.map(s=>s.code));const classTransactions=transactions.filter(t=>codes.has(t.studentCode));
     const m=totals(g.students,classTransactions);const pct=m.due?Math.min(100,Math.round(m.paid/m.due*100)):0;
-    return `<tr><td><strong>${escapeHTML(name)}</strong></td><td>${g.count}</td><td>${m.dueItems}</td><td>${m.paidItems}</td><td>${money(m.remain)}</td><td><div class="class-progress"><span>${pct}%</span><span class="tiny-track"><i style="width:${pct}%"></i></span></div></td></tr>`;
+    return `<tr class="class-summary-row" data-class-name="${escapeHTML(name)}" tabindex="0" role="button" aria-label="Xem chi tiết lớp ${escapeHTML(name)}"><td><strong class="class-link">${escapeHTML(name)}</strong></td><td>${g.count}</td><td>${m.dueItems}</td><td>${m.paidItems}</td><td>${money(m.remain)}</td><td><div class="class-progress"><span>${pct}%</span><span class="tiny-track"><i style="width:${pct}%"></i></span></div></td></tr>`;
   }).join('') : '<tr><td colspan="6" class="empty-cell">Chưa có dữ liệu. Nhập danh sách học sinh để bắt đầu.</td></tr>';
+}
+function renderClassDetail(className, students, transactions) {
+  const classStudents=students.filter(s=>(s.className||'Chưa xếp lớp')===className);
+  const codes=new Set(classStudents.map(s=>s.code));
+  const classTransactions=transactions.filter(t=>codes.has(t.studentCode));
+  const valid=classTransactions.filter(t=>t.paymentStatus==='valid');
+  const paidItems=new Set(valid.map(t=>`${t.studentCode}|${t.matchedDueItemId||''}`));
+  const feeGroups=new Map();
+  classStudents.forEach(student=>studentDueItems(student).forEach(item=>{
+    const key=item.name||getFeeLabel(item.category);
+    const g=feeGroups.get(key)||{name:key,dueItems:0,paidItems:0,due:0,paid:0};
+    g.dueItems++;g.due+=item.amount;
+    if(paidItems.has(`${student.code}|${item.id}`)){g.paidItems++;g.paid+=item.amount;}
+    feeGroups.set(key,g);
+  }));
+  const m=totals(classStudents,classTransactions);
+  $('#classDetailTitle').textContent=`Lớp ${className}`;
+  $('#classDetailSubtitle').textContent=`${classStudents.length} học sinh · ${m.paidItems}/${m.dueItems} món đã thu đủ · còn ${money(m.remain)}`;
+  $('#classFeeSummary').innerHTML=[...feeGroups.values()].map(g=>{
+    const pct=g.dueItems?Math.round(g.paidItems/g.dueItems*100):0;
+    return `<div class="class-fee-chip"><strong>${escapeHTML(g.name)}</strong><span>${g.paidItems}/${g.dueItems} đã thu</span><b>${pct}%</b></div>`;
+  }).join('')||'<div class="empty-inline">Lớp chưa có khoản phải thu.</div>';
+  $('#classStudentTable').innerHTML=classStudents.map(student=>{
+    const items=studentDueItems(student);
+    const itemHtml=items.map(item=>{
+      const paid=paidItems.has(`${student.code}|${item.id}`);
+      return `<div class="student-fee-line ${paid?'paid':'unpaid'}"><span>${escapeHTML(item.name)}</span><strong>${money(item.amount)}</strong><em>${paid?'Đã thu':'Chưa thu'}</em></div>`;
+    }).join('');
+    return `<tr><td><strong>${escapeHTML(student.code)}</strong></td><td><strong>${escapeHTML(student.name)}</strong></td><td><div class="student-fees-mobile">${itemHtml}</div></td></tr>`;
+  }).join('')||'<tr><td colspan="3" class="empty-cell">Không có học sinh trong lớp này.</td></tr>';
+  $('#classDetailBackdrop').classList.add('open');
+}
+function closeClassDetail(){ $('#classDetailBackdrop').classList.remove('open'); }
+async function openClassDetail(className){
+  const [students,stored]=await Promise.all([all('students'),all('transactions')]);
+  renderClassDetail(className,students,reconcileTransactions(students,stored));
 }
 function renderTransactions(transactions, limit) {
   const sorted=[...transactions].sort((a,b)=>(b.date||b.importedAt||'').localeCompare(a.date||a.importedAt||''));
@@ -643,6 +679,10 @@ function wire() {
   $('#modalClose').onclick=$('#modalCancel').onclick=closeModal;$('#modalConfirm').onclick=confirmImport;
   $('#modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop')closeModal();});
   $('#studentSearch').addEventListener('input',async()=>renderStudents(await all('students'),await all('transactions')));
+  $('#classTable').addEventListener('click',e=>{const row=e.target.closest('.class-summary-row');if(row)openClassDetail(row.dataset.className);});
+  $('#classTable').addEventListener('keydown',e=>{const row=e.target.closest('.class-summary-row');if(row&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openClassDetail(row.dataset.className);}});
+  $('#classDetailClose').onclick=closeClassDetail;
+  $('#classDetailBackdrop').addEventListener('click',e=>{if(e.target.id==='classDetailBackdrop')closeClassDetail();});
   $('#saveQrConfig').onclick=saveQrConfig;$('#generateQrs').onclick=()=>generateQrs().catch(e=>{console.error(e);toast(e.message||'Không tạo được mã QR.',true);});
   ['qrFeeFilter','qrClassFilter','qrStatusFilter'].forEach(id=>$(`#${id}`).addEventListener('change',()=>$('#downloadQrs').hidden=true));
   $('#exportStudents').onclick=exportStudents;$('#backupButton').onclick=$('#backupButtonTop').onclick=backup;$('#restoreButton').onclick=()=>$('#restoreFileInput').click();
