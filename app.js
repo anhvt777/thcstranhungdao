@@ -676,12 +676,12 @@ async function restore(file) {
 
 function excelCol(n){let s='';while(n){n--;s=String.fromCharCode(65+n%26)+s;n=Math.floor(n/26);}return s;}
 function excelXml(value,type='inlineStr',style=0){
-  if(type==='n')return \`<c s="\${style}" t="n"><v>\${Number(value)||0}</v></c>\`;
+  if(type==='n')return `<c s="${style}" t="n"><v>${Number(value)||0}</v></c>`;
   const v=escapeHTML(String(value??'')).replace(/&#39;/g,'&apos;');
-  return \`<c s="\${style}" t="inlineStr"><is><t xml:space="preserve">\${v}</t></is></c>\`;
+  return `<c s="${style}" t="inlineStr"><is><t xml:space="preserve">${v}</t></is></c>`;
 }
 function excelRow(row,cells,height){
-  return \`<row r="\${row}"\${height?\` ht="\${height}" customHeight="1"\`:''}>\${cells.map((c,i)=>\`<c r="\${excelCol(i+1)}\${row}" s="\${c.s||0}" t="\${c.t==='n'?'n':'inlineStr'}">\${c.t==='n'?\`<v>\${Number(c.v)||0}</v>\`:\`<is><t xml:space="preserve">\${escapeHTML(String(c.v??'')).replace(/&#39;/g,'&apos;')}</t></is>\`}</c>\`).join('')}</row>\`;
+  return `<row r="${row}"${height?` ht="${height}" customHeight="1"`:''}>${cells.map((c,i)=>`<c r="${excelCol(i+1)}${row}" s="${c.s||0}" t="${c.t==='n'?'n':'inlineStr'}">${c.t==='n'?`<v>${Number(c.v)||0}</v>`:`<is><t xml:space="preserve">${escapeHTML(String(c.v??'')).replace(/&#39;/g,'&apos;')}</t></is>`}</c>`).join('')}</row>`;
 }
 async function exportClassFeeReport(){
   if(typeof JSZip==='undefined')return toast('Thiếu thư viện xuất Excel. Hãy tải lại trang.',true);
@@ -716,25 +716,25 @@ async function exportClassFeeReport(){
   zip.folder('xl').file('styles.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="4"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="18"/><color rgb="FFFFFFFF"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FF063F3B"/><name val="Arial"/></font></fonts><fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF063F3B"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF078778"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE8F4F0"/></patternFill></fill></fills><borders count="2"><border/><border><left style="thin"><color rgb="FFE1E9E6"/></left><right style="thin"><color rgb="FFE1E9E6"/></right><top style="thin"><color rgb="FFE1E9E6"/></top><bottom style="thin"><color rgb="FFE1E9E6"/></bottom></border></borders><cellXfs count="8"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="3" borderId="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="3" fontId="0" fillId="0" borderId="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="1"/><xf numFmtId="10" fontId="3" fillId="4" borderId="1"/><xf numFmtId="0" fontId="3" fillId="4" borderId="1"/><xf numFmtId="3" fontId="3" fillId="4" borderId="1"/></cellXfs></styleSheet>');
   const summaryRows=[];
   summaryRows.push(excelRow(1,[{v:'BÁO CÁO TIẾN ĐỘ THU THEO LỚP',s:1}],28));
-  summaryRows.push(excelRow(2,[{v:\`Khoản thu: \${label}\`,s:6}],22));
-  summaryRows.push(excelRow(3,[{v:\`Ngày xuất: \${new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'short'}).format(new Date())}\`,s:4}],20));
+  summaryRows.push(excelRow(2,[{v:`Khoản thu: ${label}`,s:6}],22));
+  summaryRows.push(excelRow(3,[{v:`Ngày xuất: ${new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'short'}).format(new Date())}`,s:4}],20));
   summaryRows.push(excelRow(5,['LỚP','SĨ SỐ','MÓN PHẢI THU','ĐÃ THU','CHƯA THU','PHẢI THU (Đ)','ĐÃ THU (Đ)','CÒN LẠI (Đ)','TIẾN ĐỘ'].map(v=>({v,s:2})),28));
   summary.forEach((r,idx)=>summaryRows.push(excelRow(idx+6,r.map((v,j)=>({v,t:j===0?'s':'n',s:j===8?5:(j>=5?3:4)})),21)));
   const total=summary.reduce((o,r)=>r.map((v,i)=>i===0?'TỔNG':i===8?0:(o[i]||0)+(Number(v)||0)),[]);
   total[8]=total[5]?total[6]/total[5]:0;
   summaryRows.push(excelRow(summary.length+6,total.map((v,j)=>({v,t:j===0?'s':'n',s:j===8?5:(j>=5?7:6)})),24));
-  const sheet1=\`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="5" width="14" customWidth="1"/><col min="6" max="8" width="18" customWidth="1"/><col min="9" max="9" width="13" customWidth="1"/></cols><sheetData>\${summaryRows.join('')}</sheetData><mergeCells count="3"><mergeCell ref="A1:I1"/><mergeCell ref="A2:I2"/><mergeCell ref="A3:I3"/></mergeCells><autoFilter ref="A5:I\${summary.length+5}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews></worksheet>\`;
+  const sheet1=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="5" width="14" customWidth="1"/><col min="6" max="8" width="18" customWidth="1"/><col min="9" max="9" width="13" customWidth="1"/></cols><sheetData>${summaryRows.join('')}</sheetData><mergeCells count="3"><mergeCell ref="A1:I1"/><mergeCell ref="A2:I2"/><mergeCell ref="A3:I3"/></mergeCells><autoFilter ref="A5:I${summary.length+5}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews></worksheet>`;
   zip.folder('xl').folder('worksheets').file('sheet1.xml',sheet1);
   const detailRows=[];
-  detailRows.push(excelRow(1,[{v:\`CHI TIẾT HỌC SINH – \${label}\`,s:1}],28));
+  detailRows.push(excelRow(1,[{v:`CHI TIẾT HỌC SINH – ${label}`,s:1}],28));
   detailRows.push(excelRow(3,['LỚP','MÃ HỌC SINH','HỌ VÀ TÊN','KHOẢN THU','PHẢI THU (Đ)','TRẠNG THÁI','ĐÃ THU (Đ)','CÒN LẠI (Đ)','NGÀY THU','MÃ GIAO DỊCH'].map(v=>({v,s:2})),28));
   details.forEach((r,idx)=>detailRows.push(excelRow(idx+4,r.map((v,j)=>({v,t:[4,6,7].includes(j)?'n':'s',s:[4,6,7].includes(j)?3:4})),21)));
-  const sheet2=\`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="11" customWidth="1"/><col min="2" max="2" width="17" customWidth="1"/><col min="3" max="3" width="28" customWidth="1"/><col min="4" max="4" width="25" customWidth="1"/><col min="5" max="8" width="16" customWidth="1"/><col min="9" max="9" width="13" customWidth="1"/><col min="10" max="10" width="22" customWidth="1"/></cols><sheetData>\${detailRows.join('')}</sheetData><mergeCells count="1"><mergeCell ref="A1:J1"/></mergeCells><autoFilter ref="A3:J\${details.length+3}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews></worksheet>\`;
+  const sheet2=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="11" customWidth="1"/><col min="2" max="2" width="17" customWidth="1"/><col min="3" max="3" width="28" customWidth="1"/><col min="4" max="4" width="25" customWidth="1"/><col min="5" max="8" width="16" customWidth="1"/><col min="9" max="9" width="13" customWidth="1"/><col min="10" max="10" width="22" customWidth="1"/></cols><sheetData>${detailRows.join('')}</sheetData><mergeCells count="1"><mergeCell ref="A1:J1"/></mergeCells><autoFilter ref="A3:J${details.length+3}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews></worksheet>`;
   zip.folder('xl').folder('worksheets').file('sheet2.xml',sheet2);
   const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   const safe=filter==='mandatory'?'BHTT':filter==='insurance'?'BHYT':'DICH-VU';
-  const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=\`Bao-cao-thu-\${safe}-theo-lop.xlsx\`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1200);
-  toast(\`Đã xuất báo cáo Excel \${label}.\`);
+  const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`Bao-cao-thu-${safe}-theo-lop.xlsx`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1200);
+  toast(`Đã xuất báo cáo Excel ${label}.`);
 }
 
 function exportStudents() {
