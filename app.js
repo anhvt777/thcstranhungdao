@@ -464,6 +464,7 @@ function renderStudents(students, transactions) {
   }).join('') : `<tr><td colspan="11" class="empty-cell">${students.length ? 'Không tìm thấy học sinh phù hợp.' : 'Chưa có học sinh. Hãy tải file danh sách ban đầu.'}</td></tr>`;
 }
 function renderClasses(students, transactions) {
+  const filter=$('#classFeeFilter')?.value||'all';
   const groups = new Map();
   students.forEach(s => { const key=s.className||'Chưa xếp lớp'; const g=groups.get(key)||{students:[],count:0,due:0,paid:0,dueItems:0,paidItems:0};g.students.push(s);g.count++;groups.set(key,g); });
   // Render every class. Do not cap the dashboard list: a 30-row limit hid grade 9
@@ -471,7 +472,18 @@ function renderClasses(students, transactions) {
   const rows = [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'vi',{numeric:true,sensitivity:'base'}));
   $('#classTable').innerHTML = rows.length ? rows.map(([name,g])=>{
     const codes=new Set(g.students.map(s=>s.code));const classTransactions=transactions.filter(t=>codes.has(t.studentCode));
-    const m=totals(g.students,classTransactions);const pct=m.due?Math.min(100,Math.round(m.paid/m.due*100)):0;
+    let m;
+    if(filter==='all') m=totals(g.students,classTransactions);
+    else {
+      const dueItems=g.students.flatMap(s=>studentDueItems(s).filter(item=>item.category===filter));
+      const due=dueItems.reduce((sum,item)=>sum+item.amount,0);
+      const dueKeys=new Set(g.students.flatMap(s=>studentDueItems(s).filter(item=>item.category===filter).map(item=>`${s.code}|${item.id}`)));
+      const valid=classTransactions.filter(t=>t.paymentStatus==='valid'&&transactionCategory(t)===filter&&dueKeys.has(`${t.studentCode}|${t.matchedDueItemId||''}`));
+      const paidItems=new Set(valid.map(t=>`${t.studentCode}|${t.matchedDueItemId||''}`)).size;
+      const paid=valid.reduce((sum,t)=>sum+num(t.amount),0);
+      m={dueItems:dueItems.length,paidItems,due,paid,remain:Math.max(0,due-paid)};
+    }
+    const pct=m.due?Math.min(100,Math.round(m.paid/m.due*100)):0;
     return `<tr class="class-summary-row" data-class-name="${escapeHTML(name)}" tabindex="0" role="button" aria-label="Xem chi tiết lớp ${escapeHTML(name)}"><td><strong class="class-link">${escapeHTML(name)}</strong></td><td>${g.count}</td><td>${m.dueItems}</td><td>${m.paidItems}</td><td>${money(m.remain)}</td><td><div class="class-progress"><span>${pct}%</span><span class="tiny-track"><i style="width:${pct}%"></i></span></div></td></tr>`;
   }).join('') : '<tr><td colspan="6" class="empty-cell">Chưa có dữ liệu. Nhập danh sách học sinh để bắt đầu.</td></tr>';
 }
@@ -679,6 +691,7 @@ function wire() {
   $('#modalClose').onclick=$('#modalCancel').onclick=closeModal;$('#modalConfirm').onclick=confirmImport;
   $('#modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop')closeModal();});
   $('#studentSearch').addEventListener('input',async()=>renderStudents(await all('students'),await all('transactions')));
+  $('#classFeeFilter').addEventListener('change',async()=>{const [students,stored]=await Promise.all([all('students'),all('transactions')]);renderClasses(students,reconcileTransactions(students,stored));});
   $('#classTable').addEventListener('click',e=>{const row=e.target.closest('.class-summary-row');if(row)openClassDetail(row.dataset.className);});
   $('#classTable').addEventListener('keydown',e=>{const row=e.target.closest('.class-summary-row');if(row&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openClassDetail(row.dataset.className);}});
   $('#classDetailClose').onclick=closeClassDetail;
