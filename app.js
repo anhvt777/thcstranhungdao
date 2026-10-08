@@ -155,6 +155,7 @@ function guessColumn(headers, field) {
   const normal = headers.map(h => slug(h));
   const patterns = {
     code: ['ma hoc sinh', 'ma hs', 'student code', 'student id', 'ma dinh danh', 'ma so hs'],
+    dob: ['ngay sinh', 'ngay thang nam sinh', 'date of birth', 'dob'],
     name: ['ho va ten', 'ten hoc sinh', 'ho ten', 'student name', 'ten'],
     className: ['lop', 'khoi lop', 'class', 'ma lop'],
     due: ['so tien phai thu', 'phai thu', 'hoc phi', 'muc thu', 'tien thu'],
@@ -195,8 +196,8 @@ function openImportModal(kind, file, rows) {
   const summary = `<div class="file-summary"><span class="file-badge">${file.name.toLowerCase().endsWith('.xlsx') ? 'XLSX' : 'CSV'}</span><div><strong>${escapeHTML(file.name)}</strong><small>${rows.length - 1} dòng dữ liệu · ${headers.length} cột${rows.sourceSheet?` · Trang tính: ${escapeHTML(rows.sourceSheet)}`:''}</small></div></div>`;
   const fields = kind === 'students'
     ? longFormat
-      ? `<div class="mapping-grid">${fieldSelect('map-code','Mã học sinh',headers,'code',true)}${fieldSelect('map-payment-code','Mã HS theo khoản nộp',headers,'paymentCode',true)}${fieldSelect('map-name','Họ và tên',headers,'name',true)}${fieldSelect('map-class','Lớp',headers,'className',true)}${fieldSelect('map-fee-category','Khoản nộp (BHYT/BHTT)',headers,'studentFeeCategory',true)}${fieldSelect('map-fee-amount','Số tiền phải thu',headers,'studentFeeAmount',true)}</div><p class="mapping-intro">Mỗi học sinh có một dòng BHYT và một dòng BHTT. Web tự ghép hai dòng theo mã học sinh và giữ mã từng khoản để đối soát với cột “Mã khách hàng” của ngân hàng.</p>`
-      : `<div class="mapping-grid">${fieldSelect('map-code','Mã học sinh',headers,'code',true)}${fieldSelect('map-name','Họ và tên',headers,'name',true)}${fieldSelect('map-class','Lớp',headers,'className')}${fieldSelect('map-due','Tổng phải thu (nếu có)',headers,'due')}${fieldSelect('map-insurance','Phải thu · BHYT',headers,'dueInsurance')}${fieldSelect('map-mandatory','Phải thu · BHTT',headers,'dueMandatory')}${fieldSelect('map-service','Phải thu · Dịch vụ khác',headers,'dueService')}${fieldSelect('map-parking','Phải thu · Gửi xe',headers,'dueParking')}${fieldSelect('map-water','Phải thu · Nước uống',headers,'dueWater')}</div><p class="mapping-intro">Nhập riêng số phải thu BHYT và BHTT. Web chỉ tính khoản đã thu khi số tiền khớp chính xác.</p>`
+      ? `<div class="mapping-grid">${fieldSelect('map-code','Mã học sinh',headers,'code',true)}${fieldSelect('map-payment-code','Mã HS theo khoản nộp',headers,'paymentCode',true)}${fieldSelect('map-name','Họ và tên',headers,'name',true)}${fieldSelect('map-class','Lớp',headers,'className',true)}${fieldSelect('map-dob','Ngày sinh (nếu có)',headers,'dob')}${fieldSelect('map-fee-category','Khoản nộp (BHYT/BHTT)',headers,'studentFeeCategory',true)}${fieldSelect('map-fee-amount','Số tiền phải thu',headers,'studentFeeAmount',true)}</div><p class="mapping-intro">Mỗi học sinh có một dòng BHYT và một dòng BHTT. Web tự ghép hai dòng theo mã học sinh và giữ mã từng khoản để đối soát với cột “Mã khách hàng” của ngân hàng.</p>`
+      : `<div class="mapping-grid">${fieldSelect('map-code','Mã học sinh',headers,'code',true)}${fieldSelect('map-name','Họ và tên',headers,'name',true)}${fieldSelect('map-class','Lớp',headers,'className')}${fieldSelect('map-dob','Ngày sinh (nếu có)',headers,'dob')}${fieldSelect('map-due','Tổng phải thu (nếu có)',headers,'due')}${fieldSelect('map-insurance','Phải thu · BHYT',headers,'dueInsurance')}${fieldSelect('map-mandatory','Phải thu · BHTT',headers,'dueMandatory')}${fieldSelect('map-service','Phải thu · Dịch vụ khác',headers,'dueService')}${fieldSelect('map-parking','Phải thu · Gửi xe',headers,'dueParking')}${fieldSelect('map-water','Phải thu · Nước uống',headers,'dueWater')}</div><p class="mapping-intro">Nhập riêng số phải thu BHYT và BHTT. Web chỉ tính khoản đã thu khi số tiền khớp chính xác.</p>`
     : `<div class="mapping-grid">${fieldSelect('map-amount','Số tiền giao dịch',headers,'amount',true)}${fieldSelect('map-student','Mã khách hàng / mã khoản nộp',headers,'studentCode')}${fieldSelect('map-txn','Số hóa đơn / mã giao dịch',headers,'txnId')}${fieldSelect('map-date','Ngày giao dịch',headers,'date')}${fieldSelect('map-content','Tên khách hàng / nội dung',headers,'content')}${fieldSelect('map-category','Khoản thu (nếu có)',headers,'feeCategory')}${fieldSelect('map-bank-status','Trạng thái giao dịch',headers,'bankStatus')}</div><p class="mapping-intro">Mã khách hàng kết thúc bằng YT hoặc TT sẽ được ghép với đúng khoản BHYT hoặc BHTT. Chỉ giao dịch thành công, đúng mã khoản và đúng số tiền mới được tính đã thu.</p>`;
   $('#modalBody').innerHTML = `${summary}${fields}${previewHtml(headers, rows)}`;
   $('#modalConfirm').textContent = kind === 'students' ? 'Nhập danh sách' : 'Nhập & đối soát';
@@ -281,7 +282,7 @@ function studentsFromFeeRows(dataRows,map,now) {
       throw new Error(`Dòng ${i+2}: thiếu mã, tên, lớp, khoản BHYT/BHTT hoặc số tiền hợp lệ.`);
     if(feeCategoryFromPaymentCode(paymentCode)!==category)throw new Error(`Dòng ${i+2}: mã khoản nộp ${paymentCode} không khớp loại ${rawCategory}.`);
     let student=grouped.get(slug(code));
-    if(!student){student={code,name,className,due:0,dueItems:[],dueByCategory:{insurance:0,mandatory:0,service:0,other:0},updatedAt:now,hasFeeBreakdown:true};grouped.set(slug(code),student);}
+    if(!student){student={code,name,className,dob:normalizeDate(cell(row,map,'dob')),due:0,dueItems:[],dueByCategory:{insurance:0,mandatory:0,service:0,other:0},updatedAt:now,hasFeeBreakdown:true};grouped.set(slug(code),student);}
     if(student.name!==name||student.className!==className)throw new Error(`Mã học sinh ${code} có tên hoặc lớp không thống nhất trong file.`);
     const normalizedPaymentCode=slug(paymentCode);
     const owner=paymentOwners.get(normalizedPaymentCode);
@@ -308,9 +309,11 @@ async function confirmImport() {
   if (kind === 'students') {
     let items;
     try { items = longFormat ? studentsFromFeeRows(dataRows,map,now) : dataRows.map(row => {
-      return { code:cell(row,map,'code'), name:cell(row,map,'name'), className:cell(row,map,'className'), ...studentFeesFromRow(row,map), updatedAt:now };
+      return { code:cell(row,map,'code'), name:cell(row,map,'name'), className:cell(row,map,'className'), dob:normalizeDate(cell(row,map,'dob')), ...studentFeesFromRow(row,map), updatedAt:now };
     }).filter(s => s.code && s.name); }
     catch(error) { return toast(error.message||'Danh sách học sinh chưa đúng định dạng.',true); }
+    const priorStudents=new Map((await all('students')).map(student=>[student.code,student]));
+    items=items.map(student=>({...student,dob:student.dob||priorStudents.get(student.code)?.dob||''}));
     await putMany('students', items);
     const codes = new Map((await all('students')).map(s => [slug(s.code), s]));
     const knownTransactions = await all('transactions');
@@ -635,6 +638,7 @@ async function refresh() {
   $('#dataNoticeText').textContent=notice;
   renderFeeProgress(t.summaries);renderChart(transactions);renderClasses(students,transactions);renderStudents(students,transactions);renderFeeDetails(students,transactions,t.summaries);
   renderQrPage(students,transactions,qrConfig);
+  await loadReportConfig();
   const transactionHtml=transactions.length?renderTransactions(transactions):'<tr><td colspan="7" class="empty-cell">Chưa có báo cáo thu.</td></tr>';
   $('#transactionsTable').innerHTML=transactionHtml;$('#importsTransactionsTable').innerHTML=transactionHtml;
   ['allTxnCount','importsAllTxnCount'].forEach(id=>{const el=$(`#${id}`);if(el)el.textContent=transactions.length;});
@@ -686,7 +690,7 @@ function excelRow(row,cells,height){
 async function exportClassFeeReport(){
   if(typeof JSZip==='undefined')return toast('Thiếu thư viện xuất Excel. Hãy tải lại trang.',true);
   const filter=$('#classFeeFilter')?.value||'all';
-  if(filter==='all')return toast('Hãy chọn một món thu cụ thể trước khi xuất báo cáo.',true);
+  if(filter==='all')return exportAllClassFees();
   const [students,stored]=await Promise.all([all('students'),all('transactions')]);
   const transactions=reconcileTransactions(students,stored);
   const label=filter==='mandatory'?'BH thân thể (BHTT)':filter==='insurance'?'Bảo hiểm y tế (BHYT)':'Dịch vụ khác';
@@ -761,6 +765,7 @@ function wire() {
   $('#classTable').addEventListener('keydown',e=>{const row=e.target.closest('.class-summary-row');if(row&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openClassDetail(row.dataset.className);}});
   $('#classDetailClose').onclick=closeClassDetail;
   $('#classDetailBackdrop').addEventListener('click',e=>{if(e.target.id==='classDetailBackdrop')closeClassDetail();});
+  $('#saveReportConfig').onclick=saveReportConfig;
   $('#saveQrConfig').onclick=saveQrConfig;$('#generateQrs').onclick=()=>generateQrs().catch(e=>{console.error(e);toast(e.message||'Không tạo được mã QR.',true);});
   ['qrFeeFilter','qrClassFilter','qrStatusFilter'].forEach(id=>$(`#${id}`).addEventListener('change',()=>$('#downloadQrs').hidden=true));
   $('#exportStudents').onclick=exportStudents;$('#backupButton').onclick=$('#backupButtonTop').onclick=backup;$('#restoreButton').onclick=()=>$('#restoreFileInput').click();
@@ -772,3 +777,91 @@ document.addEventListener('DOMContentLoaded',async()=>{
   try { db=await openDatabase();wire();await refresh(); }
   catch(error){console.error(error);$('#storageStatus').textContent='Không mở được kho dữ liệu';toast('Trình duyệt không cho phép lưu dữ liệu cục bộ.',true);}
 });
+
+async function loadReportConfig() {
+  const config=(await request('meta','get','classReportConfig'))?.value||{};
+  $('#reportAuthority').value=config.authority||'';
+  $('#reportSchoolName').value=config.schoolName||'TRƯỜNG THCS TRẦN HƯNG ĐẠO';
+  $('#reportSchoolYear').value=config.schoolYear||'2026–2027';
+  $('#reportConfigStatus').textContent=config.authority?'Đã lưu thông tin đầu báo cáo.':'Nhập đơn vị chủ quản trước khi xuất tất cả khoản thu.';
+  return config;
+}
+async function saveReportConfig() {
+  try {
+    const value={authority:$('#reportAuthority').value.trim(),schoolName:$('#reportSchoolName').value.trim(),schoolYear:$('#reportSchoolYear').value.trim()};
+    if(!value.authority||!value.schoolName||!value.schoolYear)return toast('Hãy nhập đủ đơn vị chủ quản, tên trường và năm học.',true);
+    await request('meta','put',{key:'classReportConfig',value});
+    $('#reportConfigStatus').textContent='Đã lưu thông tin đầu báo cáo.';toast('Đã lưu thông tin báo cáo.');
+  } catch(error) { console.error(error);toast('Không lưu được thông tin báo cáo.',true); }
+}
+function classFeeColumnKey(item) { return ['insurance','mandatory'].includes(item.category)?item.category:`${item.category}:${slug(item.name)}`; }
+function classFeeColumns(students) {
+  const columns=new Map();
+  for(const student of students)for(const item of studentDueItems(student)) {
+    const key=classFeeColumnKey(item);
+    if(!columns.has(key))columns.set(key,{key,label:item.category==='insurance'?'BHYT':item.category==='mandatory'?'BHTT':item.name||getFeeLabel(item.category),category:item.category});
+  }
+  const order=['insurance','mandatory','service','other'];
+  return [...columns.values()].sort((a,b)=>order.indexOf(a.category)-order.indexOf(b.category)||a.label.localeCompare(b.label,'vi',{numeric:true}));
+}
+function buildClassFeeSheets(students,transactions,config) {
+  const columns=classFeeColumns(students),paidItems=new Set(transactions.filter(t=>t.paymentStatus==='valid').map(t=>`${t.studentCode}|${t.matchedDueItemId}`));
+  const classes=new Map();for(const student of students){const name=student.className||'Chưa xếp lớp';if(!classes.has(name))classes.set(name,[]);classes.get(name).push(student);}
+  const usedNames=new Set();
+  return [...classes.entries()].sort(([a],[b])=>a.localeCompare(b,'vi',{numeric:true,sensitivity:'base'})).map(([className,members])=>{
+    const base=className.replace(/[\\/?*\[\]:\x00-\x1f]/g,'_').replace(/^'+|'+$/g,'').trim().slice(0,31)||'Chưa xếp lớp';let name=base,i=1;
+    while(usedNames.has(name.toLocaleLowerCase('vi'))){const suffix=` (${++i})`;name=base.slice(0,31-suffix.length)+suffix;}usedNames.add(name.toLocaleLowerCase('vi'));
+    members.sort((a,b)=>{
+      const last=n=>String(n||'').trim().split(/\s+/).pop();
+      return last(a.name).localeCompare(last(b.name),'vi',{sensitivity:'base'})||a.name.localeCompare(b.name,'vi',{sensitivity:'base'})||String(a.code).localeCompare(String(b.code),'vi',{numeric:true});
+    });
+    const headers=['STT','Họ và tên','Ngày sinh',...columns.map(c=>c.label),'Tổng cộng','Mã học sinh'];
+    const end=excelCol(headers.length),rows=[],totals=columns.map(()=>0);let total=0;
+    const title=(r,v)=>rows.push(excelRow(r,[{v,s:r===3?1:6}],r===3?28:23));
+    title(1,config.authority);title(2,config.schoolName);title(3,`THEO DÕI HỌC SINH NỘP TIỀN NĂM HỌC ${config.schoolYear}`);
+    title(4,`Lớp: ${className} — Sĩ số: ${members.length} — Ngày xuất: ${new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}).format(new Date())}`);
+    title(5,'Số tiền đã nộp (đồng). Ô trống: không có khoản phải thu; ô vàng (0): có khoản phải thu nhưng chưa thu.');
+    rows.push(excelRow(7,headers.map(v=>({v,s:2})),36));
+    members.forEach((student,index)=>{
+      const due=studentDueItems(student),amounts=columns.map((col,j)=>{
+        const items=due.filter(item=>classFeeColumnKey(item)===col.key);
+        const value=items.reduce((sum,item)=>sum+(paidItems.has(`${student.code}|${item.id}`)?item.amount:0),0);totals[j]+=value;
+        return items.length?{v:value,t:'n',s:value?3:8}:{v:'',s:4};
+      });
+      const sum=amounts.reduce((n,c)=>n+(Number(c.v)||0),0);total+=sum;
+      const dob=student.dob||student.birthDate||student.dateOfBirth||'';
+      const date=normalizeDate(String(dob));
+      const dateCell=/^\d{4}-\d{2}-\d{2}$/.test(date)?{v:Math.round((Date.parse(date+'T00:00:00Z')-Date.UTC(1899,11,30))/86400000),t:'n',s:9}:{v:dob,s:4};
+      rows.push(excelRow(index+8,[{v:index+1,t:'n',s:4},{v:student.name,s:4},dateCell,...amounts,{v:sum,t:'n',s:7},{v:student.code,s:4}],23));
+    });
+    const last=members.length+7,totalRow=last+1;
+    rows.push(excelRow(totalRow,[{v:'TỔNG CỘNG',s:6},{v:'',s:6},{v:'',s:6},...totals.map(v=>({v,t:'n',s:7})),{v:total,t:'n',s:7},{v:'',s:6}],26));
+    const widths=headers.map((_,i)=>i===0?6:i===1?30:i===2?14:i===headers.length-1?22:16);
+    const merges=[1,2,3,4,5].map(r=>`<mergeCell ref="A${r}:${end}${r}"/>`).join('')+`<mergeCell ref="A${totalRow}:C${totalRow}"/>`;
+    const xml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${end}${totalRow}"/><sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane xSplit="3" ySplit="7" topLeftCell="D8" activePane="bottomRight" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${rows.join('')}</sheetData><autoFilter ref="A7:${end}${last}"/><mergeCells count="6">${merges}</mergeCells><printOptions horizontalCentered="1"/><pageMargins left="0.25" right="0.25" top="0.4" bottom="0.4" header="0.2" footer="0.2"/><pageSetup paperSize="9" orientation="landscape"/></worksheet>`;
+    return {name,xml,lastColumn:end,lastRow:totalRow};
+  });
+}
+async function exportAllClassFees() {
+  const [students,stored,meta]=await Promise.all([all('students'),all('transactions'),request('meta','get','classReportConfig')]);
+  if(!students.length)return toast('Chưa có danh sách học sinh để xuất báo cáo.',true);
+  const config=meta?.value;
+  if(!config?.authority||!config?.schoolName||!config?.schoolYear){setPage('settings');$('#reportAuthority').focus();return toast('Hãy lưu đơn vị chủ quản, tên trường và năm học rồi xuất lại.',true);}
+  const sheets=buildClassFeeSheets(students,reconcileTransactions(students,stored),config),zip=new JSZip();
+  const ns='http://schemas.openxmlformats.org',xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  zip.file('[Content_Types].xml',`${xml}<Types xmlns="${ns}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`);
+  zip.file('_rels/.rels',`${xml}<Relationships xmlns="${ns}/package/2006/relationships"><Relationship Id="rId1" Type="${ns}/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+  zip.file('xl/workbook.xml',`${xml}<workbook xmlns="${ns}/spreadsheetml/2006/main" xmlns:r="${ns}/officeDocument/2006/relationships"><bookViews><workbookView/></bookViews><sheets>${sheets.map((s,i)=>`<sheet name="${escapeHTML(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets><definedNames>${sheets.map((s,i)=>`<definedName name="_xlnm.Print_Titles" localSheetId="${i}">${escapeHTML("'"+s.name.replace(/'/g,"''")+"'!$1:$7")}</definedName><definedName name="_xlnm.Print_Area" localSheetId="${i}">${escapeHTML("'"+s.name.replace(/'/g,"''")+"'!$A$1:$"+s.lastColumn+"$"+s.lastRow)}</definedName>`).join('')}</definedNames></workbook>`);
+  zip.file('xl/_rels/workbook.xml.rels',`${xml}<Relationships xmlns="${ns}/package/2006/relationships">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="${ns}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="${ns}/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`);
+  zip.file('xl/styles.xml',allFeesExcelStyles());
+  sheets.forEach((s,i)=>zip.file(`xl/worksheets/sheet${i+1}.xml`,s.xml));
+  const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  download(`Theo-doi-tat-ca-khoan-thu-${config.schoolYear.replace(/[^0-9-]/g,'-')}.xlsx`,blob,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  toast(`Đã xuất tất cả khoản thu: ${sheets.length} lớp, mỗi lớp một sheet.`);
+}
+function allFeesExcelStyles() {
+  const fonts='<font><sz val="11"/><name val="Times New Roman"/></font><font><b/><sz val="14"/><name val="Times New Roman"/></font><font><b/><sz val="11"/><name val="Times New Roman"/></font>';
+  const fills='<fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE8F4F0"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/><bgColor indexed="64"/></patternFill></fill>';
+  const xf=(font,fill,border,format=0,align='left')=>`<xf numFmtId="${format}" fontId="${font}" fillId="${fill}" borderId="${border}" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="${align}" vertical="center" wrapText="1"/></xf>`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="3">${fonts}</fonts><fills count="4">${fills}</fills><borders count="2"><border/><border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="10">${xf(0,0,0)}${xf(1,0,0,0,'center')}${xf(2,2,1,0,'center')}${xf(0,0,1,3,'right')}${xf(0,0,1)}${xf(0,0,0)}${xf(2,0,0)}${xf(2,2,1,3,'right')}${xf(0,3,1,3,'right')}${xf(0,0,1,164,'center')}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+}

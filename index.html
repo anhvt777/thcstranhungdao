@@ -62,7 +62,7 @@
         </div>
 
         <article class="panel table-panel class-summary-panel">
-          <div class="panel-header class-summary-header"><div><h2>Tổng hợp theo lớp</h2><p>So sánh số phải thu, đã thu và còn lại theo từng món thu</p></div><div class="class-summary-actions"><label for="classFeeFilter">Xem theo món thu</label><select id="classFeeFilter"><option value="all">Tất cả khoản thu</option><option value="mandatory">BH thân thể (BHTT)</option><option value="insurance">Bảo hiểm y tế (BHYT)</option><option value="service">Dịch vụ khác</option></select><button class="button button-outline button-small export-class-report" id="exportClassFeeReport">⇩ Xuất Excel</button><button class="text-button" data-go="students">Danh sách học sinh <span>›</span></button></div></div>
+          <div class="panel-header class-summary-header"><div><h2>Tổng hợp theo lớp</h2><p>So sánh số phải thu, đã thu và còn lại theo từng món thu</p></div><div class="class-summary-actions"><label for="classFeeFilter">Xem theo món thu</label><select id="classFeeFilter"><option value="all">Tất cả khoản thu</option><option value="mandatory">BH thân thể (BHTT)</option><option value="insurance">Bảo hiểm y tế (BHYT)</option><option value="service">Dịch vụ khác</option></select><button class="button button-outline button-small export-class-report" id="exportClassFeeReport" title="Tất cả khoản thu: mỗi lớp một sheet; khoản riêng: báo cáo chi tiết">⇩ Xuất Excel</button><button class="text-button" data-go="students">Danh sách học sinh <span>›</span></button></div></div>
           <div class="table-wrap"><table><thead><tr><th>LỚP</th><th>SĨ SỐ</th><th>MÓN PHẢI THU</th><th>ĐÃ THU ĐỦ</th><th>CÒN PHẢI THU</th><th>TIẾN ĐỘ</th></tr></thead><tbody id="classTable"><tr><td colspan="6" class="empty-cell">Chưa có dữ liệu. Nhập danh sách học sinh để bắt đầu.</td></tr></tbody></table></div>
         </article>
         <div class="bottom-grid">
@@ -129,6 +129,16 @@
       </section>
 
       <section class="page" id="page-settings">
+        <article class="panel qr-config-card">
+          <div class="panel-header"><div><h2>Thông tin đầu báo cáo Excel</h2><p>Dùng khi xuất tất cả khoản thu, mỗi lớp một sheet.</p></div></div>
+          <div class="qr-config-grid">
+            <label class="qr-field qr-field-wide"><span>Đơn vị chủ quản</span><input id="reportAuthority" placeholder="Nhập đúng tên đơn vị chủ quản của trường" maxlength="150"></label>
+            <label class="qr-field qr-field-wide"><span>Tên trường</span><input id="reportSchoolName" maxlength="150" value="TRƯỜNG THCS TRẦN HƯNG ĐẠO"></label>
+            <label class="qr-field"><span>Năm học</span><input id="reportSchoolYear" maxlength="30" value="2026–2027"></label>
+          </div>
+          <div class="qr-config-actions"><span id="reportConfigStatus">Lưu thông tin trước khi xuất báo cáo.</span><button class="button button-outline" id="saveReportConfig">Lưu thông tin báo cáo</button></div>
+        </article>
+
         <div class="page-heading"><div><span class="eyebrow">AN TOÀN DỮ LIỆU</span><h1>Sao lưu & cài đặt</h1><p>Quản lý dữ liệu đang lưu trên thiết bị này.</p></div></div>
         <div class="settings-grid">
           <article class="panel setting-card"><div class="setting-icon">⤓</div><h2>Sao lưu dữ liệu</h2><p>Tải xuống bản sao lưu được mã hóa bằng mật khẩu, gồm học sinh, khoản thu, giao dịch và nhật ký.</p><button class="button button-primary" id="backupButton">Tạo bản sao lưu</button></article>
