@@ -155,7 +155,7 @@ function guessColumn(headers, field) {
   const normal = headers.map(h => slug(h));
   const patterns = {
     code: ['ma hoc sinh', 'ma hs', 'student code', 'student id', 'ma dinh danh', 'ma so hs'],
-    dob: ['ngay sinh', 'ngay thang nam sinh', 'date of birth', 'dob'],
+    dob: ['ngay sinh', 'ngay thang nam sinh', 'ngay sinh hoc sinh', 'birth date', 'birthday', 'date of birth', 'dob'],
     name: ['ho va ten', 'ten hoc sinh', 'ho ten', 'student name', 'ten'],
     className: ['lop', 'khoi lop', 'class', 'ma lop'],
     due: ['so tien phai thu', 'phai thu', 'hoc phi', 'muc thu', 'tien thu'],
@@ -284,6 +284,9 @@ function studentsFromFeeRows(dataRows,map,now) {
     let student=grouped.get(slug(code));
     if(!student){student={code,name,className,dob:normalizeDate(cell(row,map,'dob')),due:0,dueItems:[],dueByCategory:{insurance:0,mandatory:0,service:0,other:0},updatedAt:now,hasFeeBreakdown:true};grouped.set(slug(code),student);}
     if(student.name!==name||student.className!==className)throw new Error(`Mã học sinh ${code} có tên hoặc lớp không thống nhất trong file.`);
+    const rowDob=normalizeDate(cell(row,map,'dob'));
+    if(rowDob&&student.dob&&rowDob!==student.dob)throw new Error(`Mã học sinh ${code} có ngày sinh không thống nhất trong file.`);
+    if(rowDob)student.dob=rowDob;
     const normalizedPaymentCode=slug(paymentCode);
     const owner=paymentOwners.get(normalizedPaymentCode);
     if(owner&&owner!==slug(code))throw new Error(`Mã HS theo khoản nộp ${paymentCode} bị gán cho nhiều học sinh.`);
@@ -707,7 +710,7 @@ async function exportClassFeeReport(){
         const isPaid=paidKeys.has(item.id);
         const txn=valid.find(t=>(t.matchedDueItemId||'')===item.id);
         dueItems++;due+=item.amount;if(isPaid){paidItems++;paid+=item.amount;}
-        details.push([className,student.code,student.name,item.name,item.amount,isPaid?'Đã thu':'Chưa thu',isPaid?item.amount:0,isPaid?0:item.amount,txn?.date||'',txn?.ref||'']);
+        details.push([className,student.code,student.name,studentBirthDateText(student),item.name,item.amount,isPaid?'Đã thu':'Chưa thu',isPaid?item.amount:0,isPaid?0:item.amount,txn?.date||'',txn?.ref||'']);
       }
     }
     summary.push([className,classStudents.length,dueItems,paidItems,dueItems-paidItems,due,paid,Math.max(0,due-paid),due?paid/due:0]);
@@ -731,9 +734,9 @@ async function exportClassFeeReport(){
   zip.folder('xl').folder('worksheets').file('sheet1.xml',sheet1);
   const detailRows=[];
   detailRows.push(excelRow(1,[{v:`CHI TIẾT HỌC SINH – ${label}`,s:1}],28));
-  detailRows.push(excelRow(3,['LỚP','MÃ HỌC SINH','HỌ VÀ TÊN','KHOẢN THU','PHẢI THU (Đ)','TRẠNG THÁI','ĐÃ THU (Đ)','CÒN LẠI (Đ)','NGÀY THU','MÃ GIAO DỊCH'].map(v=>({v,s:2})),28));
-  details.forEach((r,idx)=>detailRows.push(excelRow(idx+4,r.map((v,j)=>({v,t:[4,6,7].includes(j)?'n':'s',s:[4,6,7].includes(j)?3:4})),21)));
-  const sheet2=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="11" customWidth="1"/><col min="2" max="2" width="17" customWidth="1"/><col min="3" max="3" width="28" customWidth="1"/><col min="4" max="4" width="25" customWidth="1"/><col min="5" max="8" width="16" customWidth="1"/><col min="9" max="9" width="13" customWidth="1"/><col min="10" max="10" width="22" customWidth="1"/></cols><sheetData>${detailRows.join('')}</sheetData><autoFilter ref="A3:J${details.length+3}"/><mergeCells count="1"><mergeCell ref="A1:J1"/></mergeCells></worksheet>`;
+  detailRows.push(excelRow(3,['LỚP','MÃ HỌC SINH','HỌ VÀ TÊN','NGÀY SINH','KHOẢN THU','PHẢI THU (Đ)','TRẠNG THÁI','ĐÃ THU (Đ)','CÒN LẠI (Đ)','NGÀY THU','MÃ GIAO DỊCH'].map(v=>({v,s:2})),28));
+  details.forEach((r,idx)=>detailRows.push(excelRow(idx+4,r.map((v,j)=>({v,t:[5,7,8].includes(j)?'n':'s',s:[5,7,8].includes(j)?3:4})),21)));
+  const sheet2=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="11" customWidth="1"/><col min="2" max="2" width="17" customWidth="1"/><col min="3" max="3" width="28" customWidth="1"/><col min="4" max="4" width="14" customWidth="1"/><col min="5" max="5" width="25" customWidth="1"/><col min="6" max="9" width="16" customWidth="1"/><col min="10" max="10" width="13" customWidth="1"/><col min="11" max="11" width="22" customWidth="1"/></cols><sheetData>${detailRows.join('')}</sheetData><autoFilter ref="A3:K${details.length+3}"/><mergeCells count="1"><mergeCell ref="A1:K1"/></mergeCells></worksheet>`;
   zip.folder('xl').folder('worksheets').file('sheet2.xml',sheet2);
   const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   const safe=filter==='mandatory'?'BHTT':filter==='insurance'?'BHYT':'DICH-VU';
@@ -743,8 +746,8 @@ async function exportClassFeeReport(){
 
 function exportStudents() {
   all('students').then(items=>{
-    const headers=['Mã học sinh','Họ và tên','Lớp','Số tiền phải thu','Mã khoản BHYT','BHYT phải thu','Mã khoản BHTT','BHTT phải thu','Dịch vụ khác phải thu','Gửi xe phải thu','Nước uống phải thu'];
-    const lines=items.map(s=>{const fees=studentDueItems(s);const amt=name=>fees.filter(x=>slug(x.name)===slug(name)).reduce((sum,x)=>sum+x.amount,0);const health=fees.find(x=>x.category==='insurance');const mandatory=fees.find(x=>x.category==='mandatory');const insurance=fees.filter(x=>x.category==='insurance').reduce((sum,x)=>sum+x.amount,0);const required=fees.filter(x=>x.category==='mandatory').reduce((sum,x)=>sum+x.amount,0);const service=fees.filter(x=>x.category==='service'&&!['gui xe','nuoc uong'].includes(slug(x.name))).reduce((sum,x)=>sum+x.amount,0);return [s.code,s.name,s.className,s.due,health?.paymentCode||'',insurance,mandatory?.paymentCode||'',required,service,amt('Gửi xe'),amt('Nước uống')].map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',');});
+    const headers=['Mã học sinh','Họ và tên','Ngày sinh','Lớp','Số tiền phải thu','Mã khoản BHYT','BHYT phải thu','Mã khoản BHTT','BHTT phải thu','Dịch vụ khác phải thu','Gửi xe phải thu','Nước uống phải thu'];
+    const lines=items.map(s=>{const fees=studentDueItems(s);const amt=name=>fees.filter(x=>slug(x.name)===slug(name)).reduce((sum,x)=>sum+x.amount,0);const health=fees.find(x=>x.category==='insurance');const mandatory=fees.find(x=>x.category==='mandatory');const insurance=fees.filter(x=>x.category==='insurance').reduce((sum,x)=>sum+x.amount,0);const required=fees.filter(x=>x.category==='mandatory').reduce((sum,x)=>sum+x.amount,0);const service=fees.filter(x=>x.category==='service'&&!['gui xe','nuoc uong'].includes(slug(x.name))).reduce((sum,x)=>sum+x.amount,0);return [s.code,s.name,studentBirthDateText(s),s.className,s.due,health?.paymentCode||'',insurance,mandatory?.paymentCode||'',required,service,amt('Gửi xe'),amt('Nước uống')].map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',');});
     download('danh-sach-hoc-sinh.csv','\uFEFF'+headers.join(',')+'\r\n'+lines.join('\r\n'),'text/csv;charset=utf-8');
   });
 }
@@ -794,6 +797,14 @@ async function saveReportConfig() {
     $('#reportConfigStatus').textContent='Đã lưu thông tin đầu báo cáo.';toast('Đã lưu thông tin báo cáo.');
   } catch(error) { console.error(error);toast('Không lưu được thông tin báo cáo.',true); }
 }
+function studentBirthDate(student) {
+  const value=student.dob||student.birthDate||student.dateOfBirth||student.ngaySinh||'';
+  return normalizeDate(String(value));
+}
+function studentBirthDateText(student) {
+  const date=studentBirthDate(student);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date)?date.split('-').reverse().join('/'):date;
+}
 function classFeeColumnKey(item) { return ['insurance','mandatory'].includes(item.category)?item.category:`${item.category}:${slug(item.name)}`; }
 function classFeeColumns(students) {
   const columns=new Map();
@@ -829,8 +840,8 @@ function buildClassFeeSheets(students,transactions,config) {
         return items.length?{v:value,t:'n',s:value?3:8}:{v:'',s:4};
       });
       const sum=amounts.reduce((n,c)=>n+(Number(c.v)||0),0);total+=sum;
-      const dob=student.dob||student.birthDate||student.dateOfBirth||'';
-      const date=normalizeDate(String(dob));
+      const dob=studentBirthDate(student);
+      const date=dob;
       const dateCell=/^\d{4}-\d{2}-\d{2}$/.test(date)?{v:Math.round((Date.parse(date+'T00:00:00Z')-Date.UTC(1899,11,30))/86400000),t:'n',s:9}:{v:dob,s:4};
       rows.push(excelRow(index+8,[{v:index+1,t:'n',s:4},{v:student.name,s:4},dateCell,...amounts,{v:sum,t:'n',s:7},{v:student.code,s:4}],23));
     });
@@ -857,7 +868,8 @@ async function exportAllClassFees() {
   sheets.forEach((s,i)=>zip.file(`xl/worksheets/sheet${i+1}.xml`,s.xml));
   const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   download(`Theo-doi-tat-ca-khoan-thu-${config.schoolYear.replace(/[^0-9-]/g,'-')}.xlsx`,blob,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  toast(`Đã xuất tất cả khoản thu: ${sheets.length} lớp, mỗi lớp một sheet.`);
+  const missingDob=students.filter(student=>!studentBirthDate(student)).length;
+  toast(`Đã xuất ${sheets.length} sheet lớp, có cột Ngày sinh.${missingDob?` ${missingDob} học sinh chưa có ngày sinh; nhập lại danh sách và chọn cột Ngày sinh.`:''}`);
 }
 function allFeesExcelStyles() {
   const fonts='<font><sz val="11"/><name val="Times New Roman"/></font><font><b/><sz val="14"/><name val="Times New Roman"/></font><font><b/><sz val="11"/><name val="Times New Roman"/></font>';
