@@ -46,3 +46,31 @@
 
 .export-class-report{min-height:34px;color:#08796c;border-color:#b9dcd4}
 @media(max-width:560px){.class-summary-actions{grid-template-columns:auto 1fr auto}.class-summary-actions .export-class-report{display:inline-flex!important;font-size:9px;padding:0 8px}}
+
+
+/* Manual collections */
+.cash-session-card,.cash-file-card,.manual-ledger-card{margin-top:22px;padding:22px}
+.cash-session-toolbar{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px;margin:20px 0}
+.cash-session-stats{display:grid;grid-template-columns:repeat(5,minmax(100px,1fr));gap:12px;margin-bottom:18px}
+.cash-session-stats>div{background:#f3f6fa;border:1px solid #e1e7f0;border-radius:10px;padding:14px}
+.cash-session-stats span{display:block;color:#64748b;font-size:12px;margin-bottom:8px}
+.cash-session-stats strong{font-size:18px;display:block}
+.cash-session-table-wrap{overflow:auto;max-height:520px;border:1px solid #e1e7f0;border-radius:10px}
+.cash-session-table{min-width:720px;width:100%}
+.cash-session-table th{position:sticky;top:0;background:#f3f6fa;z-index:1}
+.cash-session-table small,.manual-ledger-card small,.manual-pending small{display:block;font-weight:400;color:#64748b;margin-top:5px}
+.cash-check-cell label,.cash-paid label{display:flex;gap:8px;align-items:center;cursor:pointer;white-space:nowrap}
+.cash-check-cell input,.cash-paid input{width:18px;height:18px;accent-color:#2563eb}
+.cash-paid{color:#166534;background:#f0fdf4}.cash-na{color:#94a3b8}.cash-row-total{font-weight:700;white-space:nowrap}
+.cash-session-check{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:center;margin:20px 0}
+.cash-session-status{font-size:14px;color:#475569}
+.cash-diff-ok,.success-text{color:#15803d}.cash-diff-bad,.danger-text{color:#b91c1c}
+.receipt-batch-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.receipt-batch-actions>span{flex:1;min-width:200px;color:#64748b;font-size:13px}
+.manual-import-issues{color:#9a3412;font-size:13px;margin-top:14px}.manual-import-issues:empty{display:none}
+.manual-import-issues ul{max-height:240px;overflow:auto;padding-left:24px}
+.manual-pending{margin-top:16px;border:1px solid #e1e7f0;border-radius:10px;padding:12px}
+.manual-pending summary{cursor:pointer;font-weight:600;padding:4px}.manual-pending table{min-width:760px}
+.button-small{padding:7px 10px;font-size:12px}
+@media(max-width:900px){.cash-session-toolbar{grid-template-columns:repeat(2,minmax(140px,1fr))}.cash-session-stats{grid-template-columns:repeat(2,1fr)}.cash-session-check{grid-template-columns:1fr}}
+@media(max-width:520px){.cash-session-card,.cash-file-card,.manual-ledger-card{padding:14px}.cash-session-toolbar{grid-template-columns:1fr}.cash-session-stats strong{font-size:16px}}
