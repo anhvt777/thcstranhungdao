@@ -933,6 +933,18 @@ function wireManualCollection(){
   for(const id of ['cashSessionClass','cashSessionDate','cashSessionMethod','cashSessionCashier'])$('#'+id).addEventListener('change',()=>queueManualAction(async()=>{
     const draft=await getCashSessionDraft();draft.className=$('#cashSessionClass').value;draft.date=$('#cashSessionDate').value;draft.method=$('#cashSessionMethod').value;draft.cashier=$('#cashSessionCashier').value.trim();draft.actual=parseMoneyInput($('#cashSessionActual').value);await saveCashSessionDraft(draft);await redraw();
   }));
+  // Refresh confirmation eligibility as soon as the cashier types, not only on blur/change.
+  // Do not redraw the form on each keystroke: that could erase the name being entered.
+  $('#cashSessionCashier').addEventListener('input',()=>queueManualAction(async()=>{
+    const draft=await getCashSessionDraft();
+    draft.cashier=$('#cashSessionCashier').value.trim();
+    draft.date=$('#cashSessionDate').value;
+    draft.method=$('#cashSessionMethod').value;
+    draft.actual=parseMoneyInput($('#cashSessionActual').value);
+    await saveCashSessionDraft(draft);
+    const [students,stored]=await Promise.all([all('students'),all('transactions')]);
+    updateCashSessionTotals(draft,students,reconcileTransactions(students,stored));
+  }));
   $('#cashSessionActual').addEventListener('input',()=>queueManualAction(async()=>{const draft=await getCashSessionDraft();draft.actual=parseMoneyInput($('#cashSessionActual').value);draft.cashier=$('#cashSessionCashier').value.trim();await saveCashSessionDraft(draft);const [students,stored]=await Promise.all([all('students'),all('transactions')]);updateCashSessionTotals(draft,students,reconcileTransactions(students,stored));}));
   $('#manualPendingBody').addEventListener('click',e=>{const button=e.target.closest('[data-remove-manual]');if(button)queueManualAction(()=>toggleCashSessionSelection(button.dataset.student,button.dataset.item,false));});
   $('#cashSessionBody').addEventListener('change',e=>{const box=e.target.closest('.cash-session-check-item');if(box){const {student,item}=box.dataset,checked=box.checked;queueManualAction(()=>toggleCashSessionSelection(student,item,checked));}});
