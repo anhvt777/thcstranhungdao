@@ -42,6 +42,15 @@
 
       <section class="page active" id="page-dashboard">
         <div class="notice notice-sample" id="dataNotice"><span class="sample-label">DỮ LIỆU TRÊN MÁY</span><strong id="dataNoticeText">Chọn danh sách học sinh và báo cáo thu để bắt đầu theo dõi.</strong><button class="button button-small button-outline" data-go="imports">Nhập dữ liệu</button></div>
+        <article class="panel" style="margin-bottom:18px;padding:16px">
+          <div class="panel-header"><div><h2>Quy trình cập nhật số liệu nhà trường</h2><p>Ba bước thường dùng của kế toán: danh sách học sinh → giao dịch ngân hàng → báo cáo.</p></div></div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;padding:12px 0 4px">
+            <button class="button button-primary" data-go="imports">1. Nhập học sinh / BIDV</button>
+            <button class="button button-outline" data-go="fees">2. Kiểm tra số đã thu</button>
+            <button class="button button-outline" data-go="parent-draft">3. Xuất khoản còn thu</button>
+          </div>
+          <p style="margin:8px 0 0;color:var(--muted)">Trước khi thay file tổng hợp, nên tạo bản sao lưu tại mục Sao lưu & cài đặt. Các chức năng nâng cao có thể dùng sau.</p>
+        </article>
         <div class="stats-grid">
           <article class="stat-card"><div class="stat-icon mint">♧</div><div><span class="stat-label">Học sinh</span><strong class="stat-value" id="statStudents">0</strong><small class="stat-hint" id="statClasses">Chưa có danh sách</small></div></article>
           <article class="stat-card"><div class="stat-icon blue">▤</div><div><span class="stat-label">Món phải thu</span><strong class="stat-value" id="statFeeItems">0</strong><small class="stat-hint" id="statDueAmount">0 ₫ phải thu</small></div></article>
