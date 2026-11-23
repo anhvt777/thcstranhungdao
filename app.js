@@ -382,6 +382,7 @@ function setPage(page) {
     qr:['Tạo mã QR','Tạo QR thanh toán theo từng món thu của từng học sinh'],
     imports:['Nhập dữ liệu','Cập nhật danh sách học sinh và báo cáo thu gần nhất'],
     history:['Tra cứu & báo cáo','Lịch sử các lần nhập dữ liệu trên thiết bị này'],
+    'parent-draft':['Báo cáo còn thu','Xuất danh sách còn thu và bản nháp dữ liệu cho phụ huynh'],
     settings:['Sao lưu & cài đặt','Bảo vệ và chuyển dữ liệu theo quy trình của trường']
   };
   $('#topTitle').textContent = labels[page]?.[0] || 'SchoolCollect';
