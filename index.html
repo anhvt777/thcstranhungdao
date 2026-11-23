@@ -25,6 +25,7 @@
         <a class="nav-item qr-external-link" href="https://anhvt777.github.io/bidvqrgen/" target="_blank" rel="noopener noreferrer" aria-label="Mở công cụ tạo mã QR trong tab mới"><span class="nav-icon">▦</span>Tạo mã QR <span class="external-link-mark" aria-hidden="true">↗</span></a>
         <button class="nav-item" data-page="imports"><span class="nav-icon">⇧</span>Nhập dữ liệu</button>
         <button class="nav-item" data-page="history"><span class="nav-icon">▣</span>Tra cứu & báo cáo</button>
+        <button class="nav-item" data-page="parent-draft"><span class="nav-icon">⇩</span>Báo cáo còn thu</button>
       </nav>
       <div class="sidebar-bottom">
         <div class="school-chip"><span class="school-symbol">⌂</span><div><strong>TRƯỜNG THCS TRẦN HƯNG ĐẠO</strong><small>Năm học 2026–2027</small></div></div>
@@ -41,6 +42,15 @@
 
       <section class="page active" id="page-dashboard">
         <div class="notice notice-sample" id="dataNotice"><span class="sample-label">DỮ LIỆU TRÊN MÁY</span><strong id="dataNoticeText">Chọn danh sách học sinh và báo cáo thu để bắt đầu theo dõi.</strong><button class="button button-small button-outline" data-go="imports">Nhập dữ liệu</button></div>
+        <article class="panel" style="margin-bottom:18px;padding:16px">
+          <div class="panel-header"><div><h2>Quy trình cập nhật số liệu nhà trường</h2><p>Ba bước thường dùng của kế toán: danh sách học sinh → giao dịch ngân hàng → báo cáo.</p></div></div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;padding:12px 0 4px">
+            <button class="button button-primary" data-go="imports">1. Nhập học sinh / BIDV</button>
+            <button class="button button-outline" data-go="fees">2. Kiểm tra số đã thu</button>
+            <button class="button button-outline" data-go="parent-draft">3. Xuất khoản còn thu</button>
+          </div>
+          <p style="margin:8px 0 0;color:var(--muted)">Trước khi thay file tổng hợp, nên tạo bản sao lưu tại mục Sao lưu & cài đặt. Các chức năng nâng cao có thể dùng sau.</p>
+        </article>
         <div class="stats-grid">
           <article class="stat-card"><div class="stat-icon mint">♧</div><div><span class="stat-label">Học sinh</span><strong class="stat-value" id="statStudents">0</strong><small class="stat-hint" id="statClasses">Chưa có danh sách</small></div></article>
           <article class="stat-card"><div class="stat-icon blue">▤</div><div><span class="stat-label">Món phải thu</span><strong class="stat-value" id="statFeeItems">0</strong><small class="stat-hint" id="statDueAmount">0 ₫ phải thu</small></div></article>
@@ -169,6 +179,22 @@
         <article class="panel table-panel"><div class="panel-header"><div><h2>Lịch sử nhập file</h2><p>Nhật ký chỉ lưu trên máy đang sử dụng</p></div></div><div class="table-wrap"><table><thead><tr><th>THỜI GIAN</th><th>LOẠI FILE</th><th>TÊN FILE</th><th>SỐ DÒNG</th><th>KẾT QUẢ</th></tr></thead><tbody id="historyTable"><tr><td colspan="5" class="empty-cell">Chưa có lịch sử nhập file.</td></tr></tbody></table></div></article>
       </section>
 
+      <section class="page" id="page-parent-draft">
+        <div class="page-heading"><div><span class="eyebrow">ĐỐI SOÁT & CỔNG PHỤ HUYNH</span><h1>Báo cáo còn thu và xuất bản nháp</h1><p>Tổng hợp từng món phải thu theo học sinh; xuất file CSV và JSON thử nghiệm mà không gửi dữ liệu lên máy chủ.</p></div></div>
+        <article class="panel">
+          <div class="panel-header"><div><h2>Kiểm tra số còn phải thu</h2><p>Chỉ tính giao dịch đã đối soát khớp; giao dịch chưa rõ giữ trạng thái chờ xác minh.</p></div></div>
+          <div class="qr-config-grid" style="padding:16px">
+            <label class="qr-field"><span>Chọn lớp</span><select id="parentDraftClass"><option value="">Tất cả lớp</option></select></label>
+          </div>
+          <div class="qr-config-actions" style="padding:16px;display:flex;flex-wrap:wrap;gap:8px">
+            <button class="button button-outline" id="parentDraftRefresh">Tính số còn thu</button>
+            <button class="button button-primary" id="parentDraftCsv">Xuất danh sách còn thu CSV</button>
+            <button class="button button-outline" id="parentDraftExport">Xuất JSON nháp cổng phụ huynh</button>
+          </div>
+          <div class="privacy-explainer"><span class="privacy-mark">!</span><div><strong>Chưa công bố dữ liệu</strong><p>Bản JSON chứa dữ liệu cá nhân; chỉ lưu nội bộ, không tải lên GitHub hay gửi công khai. File chỉ là bản nháp, chưa liên thông cổng phụ huynh.</p><p id="parentDraftStatus" role="status">Bấm “Tính số còn thu” để tổng hợp dữ liệu.</p></div></div>
+        </article>
+      </section>
+
       <section class="page" id="page-settings">
         <article class="panel qr-config-card">
           <div class="panel-header"><div><h2>Thông tin đầu báo cáo Excel</h2><p>Dùng khi xuất tất cả khoản thu, mỗi lớp một sheet.</p></div></div>
@@ -208,5 +234,6 @@
   <script src="vendor/qrcode.min.js"></script>
   <script src="vendor/jszip.min.js"></script>
   <script src="app.js"></script>
+  <script src="parent-preview.js"></script>
 </body>
 </html>
