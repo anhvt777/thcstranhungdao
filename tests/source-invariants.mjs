@@ -16,3 +16,13 @@ assert.match(readme, /\.sctbackup/,
 assert.match(html, /app\.js/,
   'HTML phải tải ứng dụng chính.');
 console.log('PASS: Bất biến nguồn THCS Trần Hưng Đạo.');
+
+const draftJs = readFileSync(new URL('../parent-preview.js', import.meta.url), 'utf8');
+const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+assert.match(html, /id="page-parent-draft"/, 'Thiếu tab xuất dự thảo.');
+assert.match(html, /src="parent-preview\.js"/, 'Thiếu JavaScript xuất dự thảo.');
+assert.match(sw, /parent-preview\.js/, 'Service worker chưa cache module mới.');
+assert.match(draftJs, /OFFLINE_DRAFT_NOT_APPROVED/, 'Bản nháp phải ghi rõ chưa phê duyệt.');
+assert.doesNotMatch(draftJs, /\bfetch\s*\(|\bXMLHttpRequest\b|\bsendBeacon\b/, 'Module xuất không được truyền dữ liệu lên mạng.');
+assert.doesNotMatch(draftJs, /\bputMany\s*\(|\bclearAll\s*\(|\bdb\.transaction\s*\(/, 'Module xuất chỉ được đọc dữ liệu.');
+console.log('PASS: Tab báo cáo còn thu và bản nháp cổng phụ huynh an toàn.');
